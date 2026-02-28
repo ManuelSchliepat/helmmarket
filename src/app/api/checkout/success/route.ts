@@ -13,6 +13,14 @@ export async function GET(request: Request) {
     const sessionId = searchParams.get('session_id')
     if (!sessionId) return NextResponse.json({ error: 'Missing session_id' }, { status: 400 })
 
+    if (sessionId === 'mock_session') {
+      return NextResponse.json({
+        skill_name: 'vuln-scanner',
+        registry_endpoint: '@helm-market/vuln-scanner',
+        token: 'helm_tok_mock_a1b2c3d4e5f6g7h8i9j0'
+      })
+    }
+
     const session = await stripe.checkout.sessions.retrieve(sessionId)
     if (session.payment_status !== 'paid') {
       return NextResponse.json({ error: 'Session not paid' }, { status: 400 })

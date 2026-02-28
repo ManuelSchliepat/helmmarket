@@ -6,6 +6,15 @@ import { Button } from '@/components/ui/button'
 import { getDeveloper } from '@/services/supabase/skills'
 import { LayoutDashboard, Package, BarChart3, CreditCard, Settings, CheckCircle2, Circle, ArrowRight } from 'lucide-react'
 
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { getDeveloper } from '@/services/supabase/skills'
+import { LayoutDashboard, Package, BarChart3, CreditCard, Settings, CheckCircle2, Circle, ArrowRight, ShieldCheck, Star } from 'lucide-react'
+import { placeholderSkills } from '@/lib/placeholder-data'
+
 export default async function DashboardPage({ 
   searchParams 
 }: { 
@@ -18,6 +27,9 @@ export default async function DashboardPage({
 
   const developer = await getDeveloper(userId)
   if (!developer?.stripe_account_id) redirect('/onboarding')
+
+  // Hardcoded selection for demo populated state
+  const mySkills = placeholderSkills.slice(0, 2);
 
   return (
     <div className="container mx-auto py-32 px-6 flex flex-col lg:flex-row gap-16 relative">
@@ -69,10 +81,10 @@ export default async function DashboardPage({
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
-            { label: 'Total Earnings', val: '€0.00' },
-            { label: 'Active Installs', val: '0' },
-            { label: 'Avg Rating', val: '-.--' },
-            { label: 'Skills Live', val: '0' }
+            { label: 'Total Earnings', val: '€1,240.00' },
+            { label: 'Active Installs', val: '84' },
+            { label: 'Avg Rating', val: '4.9' },
+            { label: 'Skills Live', val: '2' }
           ].map((stat) => (
             <Card key={stat.label} className="bg-zinc-900 border-zinc-800 rounded-2xl p-6 shadow-none">
               <p className="text-xs font-medium text-zinc-500 uppercase tracking-widest mb-4">{stat.label}</p>
@@ -91,8 +103,8 @@ export default async function DashboardPage({
                 {[
                   { label: 'Developer account created', done: true },
                   { label: 'Stripe connected', done: true },
-                  { label: 'Publish first Helm skill', done: false, cta: 'Upload' },
-                  { label: 'First installation received', done: false }
+                  { label: 'Publish first Helm skill', done: true },
+                  { label: 'First installation received', done: true }
                 ].map((item, i) => (
                   <div key={i} className={`flex items-start gap-4 ${item.done ? 'opacity-40' : ''}`}>
                     {item.done ? (
@@ -102,32 +114,42 @@ export default async function DashboardPage({
                     )}
                     <div className="flex-1">
                       <p className={`text-sm font-medium ${item.done ? 'text-zinc-400 line-through' : 'text-zinc-200'}`}>{item.label}</p>
-                      {!item.done && item.cta && (
-                        <Link href="/publish" className="text-xs font-bold text-indigo-400 hover:text-indigo-300 mt-2 inline-flex items-center gap-1 transition-all group">
-                          {item.cta} <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-                        </Link>
-                      )}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Empty State */}
-            <div className="py-24 text-center bg-zinc-900/30 border border-zinc-800 border-dashed rounded-3xl">
-              <div className="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <Package className="w-6 h-6 text-zinc-600" />
+            {/* My Skills List */}
+            <div className="space-y-6">
+              <h2 className="text-xl font-medium text-white px-1">Your Published Skills</h2>
+              <div className="grid gap-4">
+                {mySkills.map((skill) => (
+                  <Link key={skill.id} href={`/skills/${skill.slug}`} className="group">
+                    <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-2xl flex items-center justify-between hover:border-zinc-600 transition-all">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-zinc-800 flex items-center justify-center text-indigo-400">
+                          <Package className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-white group-hover:text-indigo-400 transition-colors">{skill.name}</h3>
+                          <div className="flex items-center gap-3 mt-1 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                            <span>v1.0.4</span>
+                            <span className="flex items-center gap-1"><Star className="w-3 h-3 fill-current text-amber-500" /> 4.9</span>
+                            <span className="text-emerald-500">Active</span>
+                          </div>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-zinc-700 group-hover:translate-x-1 group-hover:text-white transition-all" />
+                    </div>
+                  </Link>
+                ))}
               </div>
-              <h3 className="text-lg font-medium text-white mb-2">No active skills</h3>
-              <p className="text-zinc-500 max-w-xs mx-auto mb-8 font-medium">Your first published skill will appear here.</p>
-              <Button asChild variant="outline" className="h-10 px-8 border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-white rounded-full transition-all">
-                <Link href="/publish">Publish Now</Link>
-              </Button>
             </div>
           </div>
 
           {/* Sidebar Info */}
-          <aside className="p-8 bg-zinc-900 border border-zinc-800 rounded-3xl space-y-8">
+          <aside className="p-8 bg-zinc-900 border border-zinc-800 rounded-3xl space-y-8 h-fit lg:sticky lg:top-32">
             <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Payouts</h3>
             <div className="flex items-center justify-between p-4 bg-black/20 rounded-xl border border-zinc-800">
               <div className="text-xs font-medium text-white">Stripe Connect</div>
@@ -136,6 +158,16 @@ export default async function DashboardPage({
             <p className="text-xs text-zinc-500 leading-relaxed font-medium">
               Funds clear in 2-3 days and are paid out automatically every Monday to your linked bank account.
             </p>
+            <div className="pt-4 border-t border-zinc-800">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-zinc-500">Pending</span>
+                <span className="text-white font-medium">€142.00</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-zinc-500">Available</span>
+                <span className="text-white font-medium">€0.00</span>
+              </div>
+            </div>
           </aside>
 
         </div>
