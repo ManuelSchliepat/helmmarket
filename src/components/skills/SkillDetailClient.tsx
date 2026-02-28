@@ -63,7 +63,7 @@ export function SkillDetailClient({ skill }: { skill: Skill }) {
                   <p className="text-xs text-zinc-500 font-medium uppercase tracking-widest px-1">1. Install</p>
                   <CodeBlock code={installCommand} lang="bash" />
                   <p className="text-xs text-zinc-500 font-medium uppercase tracking-widest px-1 pt-4">2. Implementation</p>
-                  <CodeBlock code={skill.code_example || \`// Example usage coming soon\`} lang="typescript" />
+                  <CodeBlock code={skill.code_example || "// Example usage coming soon"} lang="typescript" />
                 </div>
               </div>
 

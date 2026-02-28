@@ -30,7 +30,7 @@ export async function lookup(domain: string, type: string = 'A') {
 export async function checkMxRecords(domain: string) {
   const result = await lookup(domain, 'MX');
   
-  const mxRecords = result.records.map(r => {
+  const mxRecords = result.records.map((r: { value: string, ttl: number }) => {
     // Cloudflare returns MX data like "10 mail.example.com."
     const parts = r.value.split(' ');
     if (parts.length === 2) {
@@ -44,7 +44,7 @@ export async function checkMxRecords(domain: string) {
   });
 
   // Sort by priority
-  mxRecords.sort((a, b) => a.priority - b.priority);
+  mxRecords.sort((a: { priority: number }, b: { priority: number }) => a.priority - b.priority);
 
   return {
     domain,

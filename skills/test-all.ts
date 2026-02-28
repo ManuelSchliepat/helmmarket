@@ -1,8 +1,8 @@
-import { searchByCve } from './helm-skill-cve-scanner/index.ts';
-import { convert } from './helm-skill-currency/index.ts';
-import { getWeatherByCity } from './helm-skill-weather/index.ts';
-import { redactText } from './helm-skill-pii-scanner/index.ts';
-import { fullEmailSecurityAudit } from './helm-skill-dns-check/index.ts';
+import { searchByCve } from './helm-skill-cve-scanner/index';
+import { convert } from './helm-skill-currency/index';
+import { getWeatherByCity } from './helm-skill-weather/index';
+import { redactText } from './helm-skill-pii-scanner/index';
+import { fullEmailSecurityAudit } from './helm-skill-dns-check/index';
 
 async function runTests() {
   console.log("--- TESTING helm-skill-cve-scanner ---");
