@@ -3,20 +3,20 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { companies, placeholderSkills, testimonials, providers } from "@/lib/placeholder-data";
+import { companies, placeholderSkills, testimonials } from "@/lib/placeholder-data";
 import { SkillCard } from "@/components/skills/SkillCard";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 
 export default function Home() {
-  const featuredSkills = placeholderSkills.slice(0, 6);
-  const mainTestimonial = testimonials[1]; // Guillermo Rauch
+  const featuredSkills = placeholderSkills.slice(0, 3);
+  const mainTestimonial = testimonials[1];
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#0a0a0a] text-zinc-400 selection:bg-indigo-500/30 selection:text-white">
+    <div className="flex flex-col min-h-screen bg-[#0a0a0a] selection-indigo">
       <main className="flex-1">
         
         {/* HERO SECTION */}
-        <section className="relative pt-32 pb-20 md:pt-48 md:pb-32">
+        <section className="relative pt-48 pb-32 overflow-hidden">
           <div className="container px-6 mx-auto relative z-10">
             <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
               <motion.div 
@@ -24,20 +24,20 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
               >
-                <h1 className="text-5xl md:text-7xl font-semibold tracking-tight text-white mb-8">
-                  The App Store for <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-b from-indigo-300 to-indigo-600">AI Agent Skills</span>
+                <h1 className="text-5xl md:text-7xl font-semibold tracking-tight text-white mb-8 leading-[1.1]">
+                  The infrastructure for <br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-b from-indigo-300 to-indigo-600">AI agent capabilities</span>
                 </h1>
                 <p className="mx-auto max-w-2xl text-lg md:text-xl text-zinc-400 leading-relaxed mb-12">
-                  2,400 developers use Helm Market to discover, install and monetize 
-                  typed, sandboxed AI skills. Built on the provider-agnostic Helm paradigm.
+                  Helm Market provides typed, sandboxed skills for autonomous agents. 
+                  Discover, install, and monetize secure integrations in minutes.
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                  <Button asChild size="lg" className="h-12 px-8 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full transition-all duration-300 shadow-lg shadow-indigo-500/20">
-                    <Link href="/skills">Browse Marketplace</Link>
+                  <Button asChild size="lg" className="h-12 px-8 bg-white text-black hover:bg-zinc-200 rounded-full font-medium transition-all shadow-lg">
+                    <Link href="/skills">Get Started</Link>
                   </Button>
-                  <Button asChild variant="outline" size="lg" className="h-12 px-8 bg-transparent border-zinc-800 hover:border-zinc-600 text-white rounded-full transition-all duration-300">
-                    <Link href="/onboarding">Publish & Earn</Link>
+                  <Button asChild variant="outline" size="lg" className="h-12 px-8 bg-transparent border-zinc-800 hover:border-zinc-600 text-white rounded-full font-medium transition-all">
+                    <Link href="/onboarding">Sell your skills</Link>
                   </Button>
                 </div>
               </motion.div>
@@ -45,12 +45,12 @@ export default function Home() {
           </div>
         </section>
 
-        {/* TRUST BAR */}
-        <section className="py-12 border-y border-zinc-900 bg-zinc-900/20">
+        {/* TRUST LOGOS */}
+        <section className="py-24 border-y border-zinc-900/50">
           <div className="container px-6 mx-auto">
-            <div className="flex flex-wrap justify-center items-center gap-12 md:gap-24 opacity-40">
+            <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20 opacity-30 grayscale contrast-125">
               {companies.map((company) => (
-                <div key={company.name} className="text-xl md:text-2xl font-semibold text-white tracking-tighter grayscale">
+                <div key={company.name} className="text-xl md:text-2xl font-bold text-white tracking-tighter">
                   {company.name}
                 </div>
               ))}
@@ -58,19 +58,14 @@ export default function Home() {
           </div>
         </section>
 
-        {/* SKILLS GRID */}
+        {/* FEATURED SKILLS */}
         <section className="py-32">
           <div className="container px-6 mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-end gap-8 mb-16">
-              <div className="max-w-xl text-left">
-                <h2 className="text-2xl md:text-3xl font-medium text-white mb-4">Enterprise-grade skills</h2>
-                <p className="text-zinc-400 leading-relaxed">
-                  Discover production-ready skills for security, compliance, and industrial automation.
-                </p>
-              </div>
-              <Link href="/skills" className="text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-2 group transition-colors">
-                View all skills <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
+            <div className="max-w-xl mb-24">
+              <h2 className="text-3xl font-medium text-white mb-6 tracking-tight">Verified agent skills</h2>
+              <p className="text-zinc-400 text-lg leading-relaxed">
+                Production-ready modules for security, data analysis, and industrial automation.
+              </p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -78,57 +73,62 @@ export default function Home() {
                 <SkillCard key={skill.id} skill={skill} index={index} />
               ))}
             </div>
+            
+            <div className="mt-16 flex justify-center">
+              <Link href="/skills" className="text-sm font-medium text-zinc-500 hover:text-white flex items-center gap-2 group transition-colors">
+                View full marketplace <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
           </div>
         </section>
 
-        {/* HOW IT WORKS */}
-        <section className="py-32 bg-zinc-900/10 border-y border-zinc-900">
+        {/* HOW IT WORKS / FEATURES */}
+        <section className="py-32 bg-zinc-900/20 border-y border-zinc-900/50">
           <div className="container px-6 mx-auto">
-            <div className="text-center mb-24">
-              <h2 className="text-2xl md:text-3xl font-medium text-white mb-4">Secure, Typed, Scalable</h2>
-              <p className="text-zinc-400 max-w-xl mx-auto">The Helm paradigm ensures your agents are safe and efficient.</p>
-            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-16">
               {[
-                { title: 'Secure Sandbox', desc: 'Every skill runs in an isolated environment with fine-grained permission control.' },
-                { title: 'Provider Agnostic', desc: 'Write once, run on any LLM. Swap backends without changing a single line of code.' },
-                { title: 'Ready to Monetize', desc: 'Publish your skills and keep 70% of every installation. We handle the rest.' }
-              ].map((step, i) => (
-                <div key={i} className="flex flex-col items-center text-center">
-                  <div className="w-12 h-12 bg-indigo-600/10 border border-indigo-500/20 rounded-2xl flex items-center justify-center mb-8 text-indigo-400">
-                    <Check className="w-6 h-6" />
+                { title: 'Secure Sandbox', desc: 'Every skill executes in a restricted environment with fine-grained kernel permissions.' },
+                { title: 'Type Safe', desc: 'Full TypeScript definitions for every operation. No more guessing agent payloads.' },
+                { title: 'Provider Agnostic', desc: 'Swap between OpenAI, Anthropic, or local LLMs without rewriting a single integration.' }
+              ].map((feature, i) => (
+                <div key={i} className="flex flex-col">
+                  <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-indigo-500 mb-8 shadow-sm">
+                    <CheckCircle2 className="w-5 h-5" />
                   </div>
-                  <h3 className="text-lg font-medium text-white mb-4">{step.title}</h3>
-                  <p className="text-zinc-400 leading-relaxed">{step.desc}</p>
+                  <h3 className="text-lg font-medium text-white mb-4 tracking-tight">{feature.title}</h3>
+                  <p className="text-zinc-400 leading-relaxed text-sm">{feature.desc}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* SINGLE TESTIMONIAL */}
+        {/* TESTIMONIAL */}
         <section className="py-32">
           <div className="container px-6 mx-auto">
-            <div className="max-w-4xl mx-auto bg-zinc-900 border border-zinc-800 rounded-[2rem] p-12 md:p-20 text-center">
-              <blockquote className="text-2xl md:text-3xl text-white font-medium leading-tight mb-12 italic">
+            <div className="max-w-4xl mx-auto text-center">
+              <div className="mb-12">
+                <img src={mainTestimonial.avatar} alt={mainTestimonial.name} className="w-16 h-16 rounded-full mx-auto border border-zinc-800 mb-6 shadow-xl" />
+                <div className="font-medium text-white">{mainTestimonial.name}</div>
+                <div className="text-zinc-500 text-sm">@{mainTestimonial.handle}</div>
+              </div>
+              <blockquote className="text-2xl md:text-4xl text-white font-medium tracking-tight leading-tight italic">
                 "{mainTestimonial.quote}"
               </blockquote>
-              <div className="flex flex-col items-center">
-                <img src={mainTestimonial.avatar} alt={mainTestimonial.name} className="w-16 h-16 rounded-full mb-4 border border-zinc-800" />
-                <div className="font-semibold text-white">{mainTestimonial.name}</div>
-                <div className="text-zinc-500 font-medium">@{mainTestimonial.handle}</div>
-              </div>
             </div>
           </div>
         </section>
 
         {/* FINAL CTA */}
-        <section className="py-32">
+        <section className="py-48">
           <div className="container px-6 mx-auto text-center">
-            <div className="max-w-2xl mx-auto space-y-12">
-              <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-white">Start building the future of autonomous agents</h2>
-              <Button asChild size="lg" className="h-14 px-12 bg-white text-black hover:bg-zinc-200 rounded-full font-semibold transition-all duration-300">
-                <Link href="/onboarding">Join 2,400+ Developers</Link>
+            <h2 className="text-4xl md:text-6xl font-semibold text-white mb-12 tracking-tight">Ready to augment <br /> your agents?</h2>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button asChild size="lg" className="h-14 px-10 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-medium transition-all shadow-lg shadow-indigo-600/20">
+                <Link href="/skills">Get Started for Free</Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="h-14 px-10 bg-transparent border-zinc-800 hover:border-zinc-600 text-white rounded-full font-medium transition-all">
+                <Link href="/onboarding">Sell Skills</Link>
               </Button>
             </div>
           </div>

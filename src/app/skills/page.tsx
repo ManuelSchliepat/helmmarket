@@ -24,35 +24,36 @@ export default function SkillsPage() {
   }, [searchQuery, activeCategory, complianceOnly]);
 
   return (
-    <div className="container mx-auto py-32 px-6">
-      <div className="flex flex-col gap-16">
+    <div className="container mx-auto pt-48 pb-32 px-6">
+      <div className="flex flex-col gap-24">
         
-        {/* Header Area */}
+        {/* Header */}
         <div className="max-w-2xl">
-          <h1 className="text-4xl md:text-5xl font-semibold text-white mb-6 tracking-tight">Marketplace</h1>
-          <p className="text-zinc-400 text-lg leading-relaxed">
-            Discover production-ready skills for your autonomous agents.
+          <h1 className="text-4xl md:text-6xl font-semibold text-white mb-8 tracking-tight">Marketplace</h1>
+          <p className="text-zinc-400 text-lg md:text-xl leading-relaxed">
+            Discover verified skills to extend your autonomous agents. 
+            Typed, sandboxed, and production-ready.
           </p>
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-12 border-b border-zinc-900 pb-12">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="relative group w-full md:w-96">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-indigo-400 transition-colors" />
+            <div className="relative group w-full md:w-[400px]">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-white transition-colors" />
               <Input 
-                placeholder="Search skills..." 
+                placeholder="Search premium skills..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 bg-zinc-900 border-zinc-800 h-12 rounded-xl focus-visible:ring-indigo-500 text-base"
+                className="pl-12 bg-zinc-900 border-zinc-800 h-14 rounded-2xl focus-visible:ring-indigo-500 text-base"
               />
             </div>
             
             <button 
               onClick={() => setComplianceOnly(!complianceOnly)}
-              className={`flex items-center gap-2 h-12 px-6 rounded-xl border transition-all text-sm font-medium ${
+              className={`flex items-center gap-2 h-14 px-6 rounded-2xl border transition-all text-sm font-medium ${
                 complianceOnly 
-                  ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/20' 
+                  ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' 
                   : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600'
               }`}
             >
@@ -61,14 +62,14 @@ export default function SkillsPage() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
             {categoryFilters.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`whitespace-nowrap px-5 py-2 rounded-full text-sm font-medium transition-all border ${
+                className={`whitespace-nowrap px-6 py-2.5 rounded-full text-sm font-medium transition-all border ${
                   activeCategory === cat.id
-                    ? 'bg-white border-white text-black'
+                    ? 'bg-white border-white text-black shadow-lg shadow-white/10'
                     : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600'
                 }`}
               >
@@ -78,7 +79,7 @@ export default function SkillsPage() {
           </div>
         </div>
 
-        {/* Results Grid */}
+        {/* Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <AnimatePresence mode="popLayout">
             {filteredSkills.map((skill, index) => (
@@ -88,8 +89,8 @@ export default function SkillsPage() {
         </div>
 
         {filteredSkills.length === 0 && (
-          <div className="py-32 text-center bg-zinc-900/50 border border-zinc-800 rounded-3xl">
-            <p className="text-zinc-500">No skills found matching your criteria.</p>
+          <div className="py-48 text-center bg-zinc-900/30 border border-zinc-800 border-dashed rounded-[3rem]">
+            <p className="text-zinc-500 font-medium">No skills matching your criteria.</p>
           </div>
         )}
       </div>
