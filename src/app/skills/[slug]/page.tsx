@@ -5,8 +5,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { SkillDetailClient } from '@/components/skills/SkillDetailClient'
-import { ChevronLeft, ShieldCheck } from 'lucide-react'
+import { ChevronLeft, ShieldCheck, Loader2 } from 'lucide-react'
 import { placeholderSkills } from '@/lib/placeholder-data'
+import { CheckoutButton } from '@/components/checkout/CheckoutButton'
 
 export default async function SkillDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -58,9 +59,7 @@ export default async function SkillDetailPage({ params }: { params: Promise<{ sl
             </div>
             
             <div className="space-y-4">
-              <Button className="w-full h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold transition-all shadow-lg shadow-indigo-600/20 text-base uppercase tracking-widest">
-                Buy skill
-              </Button>
+              <CheckoutButton skillId={skill.id} />
               <Button variant="outline" className="w-full h-14 bg-transparent border-zinc-800 text-zinc-400 hover:border-zinc-600 rounded-full font-bold transition-all text-base uppercase tracking-widest">
                 Trial
               </Button>

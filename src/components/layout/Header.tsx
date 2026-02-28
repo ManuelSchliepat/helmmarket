@@ -27,7 +27,7 @@ export function Header() {
           <Link className="text-sm font-medium text-zinc-400 hover:text-white transition-colors" href="/onboarding">
             Developers
           </Link>
-          <Link className="text-sm font-medium text-zinc-400 hover:text-white transition-colors" href="#">
+          <Link className="text-sm font-medium text-zinc-400 hover:text-white transition-colors" href="/docs/quickstart">
             Docs
           </Link>
         </nav>
