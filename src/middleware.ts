@@ -4,7 +4,8 @@ const isPublicRoute = createRouteMatcher([
   '/', 
   '/skills(.*)',
   '/api/webhooks(.*)',
-  '/api/v1(.*)', // Step 1: Make v1 API public for machine discovery
+  '/api/v1(.*)', 
+  '/api/checkout', // Step 1: Make checkout API public for agent purchases
   '/onboarding',
   '/docs/(.*)'
 ]);
