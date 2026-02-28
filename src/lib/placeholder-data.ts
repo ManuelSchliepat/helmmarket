@@ -18,6 +18,7 @@ export interface Skill {
   providers: Provider[];
   provider_switchable: boolean;
   compliance_labels: ComplianceLabel[];
+  code_example?: string;
   developer_id?: string;
   developers?: {
     users?: {
@@ -120,6 +121,7 @@ export const placeholderSkills: Skill[] = [
     providers: ['openai', 'anthropic'],
     provider_switchable: true,
     compliance_labels: ['SOC2', 'ISO27001'],
+    code_example: `import { vulnScanner } from '@helm-market/vuln-scanner'\nconst agent = new Helm({ skills: [vulnScanner] })\nconst report = await agent.run("Scan production dependencies")`,
   },
   {
     id: 'sec-2',
@@ -135,6 +137,7 @@ export const placeholderSkills: Skill[] = [
     providers: ['llama', 'custom'],
     provider_switchable: true,
     compliance_labels: ['SOC2'],
+    code_example: `import { zeroTrust } from '@helm-market/zero-trust'\nconst agent = new Helm({ skills: [zeroTrust] })\nconst audit = await agent.run("Verify network microsegmentation")`,
   },
   {
     id: 'sec-3',
@@ -150,6 +153,7 @@ export const placeholderSkills: Skill[] = [
     providers: ['openai'],
     provider_switchable: false,
     compliance_labels: ['GDPR', 'SOC2'],
+    code_example: `import { auditTrail } from '@helm-market/audit-trail'\nconst agent = new Helm({ skills: [auditTrail] })\nawait agent.run("Log critical transaction #442")`,
   },
   {
     id: 'sec-4',
@@ -165,6 +169,7 @@ export const placeholderSkills: Skill[] = [
     providers: ['openai', 'gemini', 'anthropic'],
     provider_switchable: true,
     compliance_labels: ['ISO27001'],
+    code_example: `import { anomalyDetect } from '@helm-market/anomaly-detect'\nconst agent = new Helm({ skills: [anomalyDetect] })\nconst alerts = await agent.run("Monitor egress traffic for leaks")`,
   },
 
   // COMPLIANCE
@@ -182,6 +187,7 @@ export const placeholderSkills: Skill[] = [
     providers: ['anthropic', 'openai'],
     provider_switchable: true,
     compliance_labels: ['EU_AI_ACT'],
+    code_example: `import { aiAudit } from '@helm-market/eu-ai-audit'\nconst agent = new Helm({ skills: [aiAudit] })\nconst result = await agent.run("Audit last 100 model responses")`,
   },
   {
     id: 'comp-2',
@@ -197,6 +203,7 @@ export const placeholderSkills: Skill[] = [
     providers: ['llama', 'custom'],
     provider_switchable: true,
     compliance_labels: ['GDPR'],
+    code_example: `import { gdprScan } from '@helm-market/gdpr-scan'\nconst agent = new Helm({ skills: [gdprScan] })\nconst findings = await agent.run("Scan S3 bucket for PII")`,
   },
   {
     id: 'comp-3',
@@ -212,6 +219,7 @@ export const placeholderSkills: Skill[] = [
     providers: ['openai', 'anthropic'],
     provider_switchable: false,
     compliance_labels: ['US_FEDERAL'],
+    code_example: `import { usFedAi } from '@helm-market/us-fed-ai'\nconst agent = new Helm({ skills: [usFedAi] })\nawait agent.run("Verify model transparency reports")`,
   },
   {
     id: 'comp-4',
@@ -227,6 +235,7 @@ export const placeholderSkills: Skill[] = [
     providers: ['openai', 'gemini', 'anthropic', 'llama'],
     provider_switchable: true,
     compliance_labels: ['EU_AI_ACT', 'US_FEDERAL'],
+    code_example: `import { biasCheck } from '@helm-market/bias-check'\nconst agent = new Helm({ skills: [biasCheck] })\nconst report = await agent.run("Analyze sentiment for bias")`,
   },
 
   // ENERGY
@@ -244,6 +253,7 @@ export const placeholderSkills: Skill[] = [
     providers: ['openai', 'custom'],
     provider_switchable: true,
     compliance_labels: ['ISO27001'],
+    code_example: `import { gridOpt } from '@helm-market/grid-opt'\nconst agent = new Helm({ skills: [gridOpt] })\nawait agent.run("Balance load for Factory A")`,
   },
   {
     id: 'energy-2',
@@ -259,6 +269,7 @@ export const placeholderSkills: Skill[] = [
     providers: ['gemini', 'openai'],
     provider_switchable: true,
     compliance_labels: [],
+    code_example: `import { forecast } from '@helm-market/energy-forecast'\nconst agent = new Helm({ skills: [forecast] })\nconst prediction = await agent.run("Forecast next 24h demand")`,
   },
   {
     id: 'energy-3',
@@ -274,6 +285,7 @@ export const placeholderSkills: Skill[] = [
     providers: ['anthropic', 'openai'],
     provider_switchable: false,
     compliance_labels: [],
+    code_example: `import { matSearch } from '@helm-market/material-search'\nconst agent = new Helm({ skills: [matSearch] })\nconst results = await agent.run("Search for high-temp alloys")`,
   },
   {
     id: 'energy-4',
@@ -289,6 +301,7 @@ export const placeholderSkills: Skill[] = [
     providers: ['llama', 'custom'],
     provider_switchable: true,
     compliance_labels: ['SOC2'],
+    code_example: `import { sensorPipe } from '@helm-market/sensor-pipeline'\nconst agent = new Helm({ skills: [sensorPipe] })\nawait agent.run("Process last 10k telemetry packets")`,
   },
 ];
 

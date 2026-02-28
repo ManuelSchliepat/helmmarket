@@ -59,8 +59,11 @@ export function SkillDetailClient({ skill }: { skill: Skill }) {
                 </p>
                 
                 <h4 className="text-base font-medium text-white mt-12 mb-6 tracking-tight">Quick Start</h4>
-                <div className="not-prose">
+                <div className="not-prose space-y-4">
+                  <p className="text-xs text-zinc-500 font-medium uppercase tracking-widest px-1">1. Install</p>
                   <CodeBlock code={installCommand} lang="bash" />
+                  <p className="text-xs text-zinc-500 font-medium uppercase tracking-widest px-1 pt-4">2. Implementation</p>
+                  <CodeBlock code={skill.code_example || \`// Example usage coming soon\`} lang="typescript" />
                 </div>
               </div>
 
