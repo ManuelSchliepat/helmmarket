@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { SkillCard } from '@/components/skills/SkillCard'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { categoryFilters, Skill } from '@/lib/placeholder-data'
-import { Search, ShieldCheck, Menu, X, Filter, ArrowUpDown } from 'lucide-react'
+import { applyFilters, computeCategoryCounts, Filters } from '@/lib/marketplace-filters'
+import { Search, ShieldCheck, Menu, X, Filter, SlidersHorizontal, SearchX, PackageOpen, ArrowRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import Image from 'next/image'
+import FocusLock from 'react-focus-lock'
+import { RemoveScroll } from 'react-remove-scroll'
 import Link from 'next/link'
 
 interface MarketplaceClientProps {
@@ -15,282 +17,282 @@ interface MarketplaceClientProps {
 }
 
 export default function MarketplaceClient({ initialSkills }: MarketplaceClientProps) {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [activeCategory, setActiveCategory] = useState('all')
-  const [complianceOnly, setComplianceOnly] = useState(false)
-  const [providerAgnosticOnly, setProviderAgnosticOnly] = useState(false)
-  const [freeOnly, setFreeOnly] = useState(false)
-  const [sortBy, setSortBy] = useState('popular')
-  const [priceRange, setPriceRange] = useState(500)
+  const [filters, setFilters] = useState<Filters>({
+    searchQuery: '',
+    activeCategory: 'all',
+    complianceOnly: false,
+    providerAgnosticOnly: false,
+    freeOnly: false,
+    priceRange: 800,
+    sortBy: 'popular'
+  });
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
-  // Client-side filtering logic
-  const filteredSkills = useMemo(() => {
-    let results = initialSkills.filter(skill => {
-      const searchContent = `${skill.name} ${skill.description} ${skill.category} ${skill.tags.join(' ')}`.toLowerCase();
-      const matchesSearch = searchContent.includes(searchQuery.toLowerCase());
-      const matchesCategory = activeCategory === 'all' || skill.category === activeCategory;
-      const matchesCompliance = !complianceOnly || (skill.compliance_labels && skill.compliance_labels.length > 0);
-      const matchesAgnostic = !providerAgnosticOnly || skill.provider_switchable;
-      const matchesFree = !freeOnly || skill.price_cents === 0;
-      const matchesPrice = skill.price_cents / 100 <= priceRange;
-      
-      return matchesSearch && matchesCategory && matchesCompliance && matchesAgnostic && matchesFree && matchesPrice;
-    });
+  // 8. Performance: Memoized results and counts
+  const filteredSkills = useMemo(() => applyFilters(initialSkills, filters), [initialSkills, filters]);
+  const categoryCounts = useMemo(() => computeCategoryCounts(initialSkills, filters), [initialSkills, filters]);
 
-    // Sorting
-    results = [...results].sort((a, b) => {
-      if (sortBy === 'newest') return new Date(b.id).getTime() - new Date(a.id).getTime(); // Placeholder date logic
-      if (sortBy === 'price-low') return a.price_cents - b.price_cents;
-      if (sortBy === 'price-high') return b.price_cents - a.price_cents;
-      return 0; // Default: popular (stable)
-    });
+  const updateFilter = (updates: Partial<Filters>) => {
+    setFilters(prev => ({ ...prev, ...updates }));
+  };
 
-    return results;
-  }, [initialSkills, searchQuery, activeCategory, complianceOnly, providerAgnosticOnly, freeOnly, sortBy, priceRange]);
+  const handleApply = () => {
+    setIsSidebarOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: initialSkills.length };
-    initialSkills.forEach(s => {
-      counts[s.category] = (counts[s.category] || 0) + 1;
-    });
-    return counts;
-  }, [initialSkills]);
+  const SidebarContent = () => (
+    <div className="space-y-10">
+      {/* Categories */}
+      <div className="space-y-4">
+        <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] px-2">Categories</h3>
+        <div className="flex flex-col gap-1">
+          {categoryFilters.map((cat) => {
+            const count = categoryCounts[cat.id] || 0;
+            const isActive = filters.activeCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => updateFilter({ activeCategory: cat.id })}
+                disabled={count === 0 && !isActive}
+                className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all group border-l-2 ${
+                  isActive 
+                    ? 'border-indigo-500 bg-indigo-500/5 text-white' 
+                    : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed'
+                }`}
+              >
+                <span>{cat.name.split(' ')[0]}</span>
+                <span className={`text-[10px] font-bold ${isActive ? 'text-indigo-400' : 'text-zinc-600'}`}>
+                  ({count})
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="space-y-4 border-t border-zinc-900 pt-8">
+        <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] px-2">Refine</h3>
+        <div className="space-y-3 px-2">
+          {[
+            { id: 'providerAgnosticOnly', label: 'Provider Agnostic' },
+            { id: 'complianceOnly', label: 'Compliance Ready' },
+            { id: 'freeOnly', label: 'Free Skills' }
+          ].map(f => (
+            <label key={f.id} className="flex items-center gap-3 cursor-pointer group">
+              <input 
+                type="checkbox" 
+                checked={(filters as any)[f.id]} 
+                onChange={e => updateFilter({ [f.id]: e.target.checked })}
+                className="w-4 h-4 rounded border-zinc-800 bg-zinc-900 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-zinc-900" 
+              />
+              <span className="text-sm font-medium group-hover:text-zinc-200 transition-colors">{f.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Sort */}
+      <div className="space-y-4 border-t border-zinc-900 pt-8">
+        <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] px-2">Sort By</h3>
+        <div className="space-y-2 px-2">
+          {[
+            { id: 'popular', label: 'Most Popular' },
+            { id: 'newest', label: 'Newest' },
+            { id: 'price-low', label: 'Price: Low to High' },
+            { id: 'price-high', label: 'Price: High to Low' }
+          ].map(item => (
+            <label key={item.id} className="flex items-center gap-3 cursor-pointer group">
+              <input 
+                type="radio" 
+                name="sort" 
+                checked={filters.sortBy === item.id} 
+                onChange={() => updateFilter({ sortBy: item.id })}
+                className="w-4 h-4 border-zinc-800 bg-zinc-900 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-zinc-900" 
+              />
+              <span className="text-sm font-medium group-hover:text-zinc-200 transition-colors">{item.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Price Range */}
+      <div className="space-y-4 border-t border-zinc-900 pt-8">
+        <div className="flex justify-between items-center px-2">
+          <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Price Range</h3>
+          <span className="text-[10px] font-bold text-indigo-400">${filters.priceRange === 800 ? 'Any' : `<$${filters.priceRange}`}</span>
+        </div>
+        <div className="px-2">
+          <input 
+            type="range" min="0" max="800" step="50" 
+            value={filters.priceRange} 
+            onChange={e => updateFilter({ priceRange: parseInt(e.target.value) })}
+            className="w-full h-1.5 bg-zinc-900 rounded-lg appearance-none cursor-pointer accent-indigo-600" 
+          />
+          <div className="flex justify-between mt-2 text-[10px] font-bold text-zinc-600 uppercase tracking-tighter">
+            <span>$0</span>
+            <span>$800+</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-zinc-400">
+    <div className="min-h-screen bg-[#0a0a0a] text-zinc-400 pb-20">
       <div className="flex relative">
         
-        {/* SIDEBAR (Desktop) */}
+        {/* 4. SIDEBAR (Desktop) */}
         <aside className="hidden lg:flex flex-col w-[280px] h-[calc(100vh-64px)] sticky top-16 border-r border-zinc-900 p-8 overflow-y-auto no-scrollbar shrink-0">
-          <div className="space-y-10">
-            
-            {/* Categories */}
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] px-2">Categories</h3>
-              <div className="flex flex-col gap-1">
-                {categoryFilters.map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => setActiveCategory(cat.id)}
-                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all group border-l-2 ${
-                      activeCategory === cat.id 
-                        ? 'border-indigo-500 bg-indigo-500/5 text-white' 
-                        : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'
-                    }`}
-                  >
-                    <span>{cat.name.split(' ')[0]}</span>
-                    <span className={`text-[10px] font-bold ${activeCategory === cat.id ? 'text-indigo-400' : 'text-zinc-600'}`}>
-                      {categoryCounts[cat.id] || 0}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
+          <SidebarContent />
+        </aside>
 
-            {/* Filters */}
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] px-2">Filters</h3>
-              <div className="space-y-3 px-2">
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <input type="checkbox" checked={providerAgnosticOnly} onChange={e => setProviderAgnosticOnly(e.target.checked)} className="w-4 h-4 rounded border-zinc-800 bg-zinc-900 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-zinc-900" />
-                  <span className="text-sm font-medium group-hover:text-zinc-200 transition-colors">Provider Agnostic</span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <input type="checkbox" checked={complianceOnly} onChange={e => setComplianceOnly(e.target.checked)} className="w-4 h-4 rounded border-zinc-800 bg-zinc-900 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-zinc-900" />
-                  <span className="text-sm font-medium group-hover:text-zinc-200 transition-colors">Compliance Ready</span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <input type="checkbox" checked={freeOnly} onChange={e => setFreeOnly(e.target.checked)} className="w-4 h-4 rounded border-zinc-800 bg-zinc-900 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-zinc-900" />
-                  <span className="text-sm font-medium group-hover:text-zinc-200 transition-colors">Free Skills</span>
-                </label>
-              </div>
-            </div>
+        {/* MAIN GRID AREA */}
+        <main className="flex-1 min-w-0">
+          
+          {/* Mobile Header / Filters Trigger */}
+          <div className="lg:hidden flex items-center justify-between p-6 pt-24 border-b border-zinc-900">
+             <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-sm font-bold text-white transition-all active:scale-95"
+             >
+               <Filter className="w-4 h-4" /> Filters
+             </button>
+             <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{filteredSkills.length} skills found</span>
+          </div>
 
-            {/* Sort */}
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] px-2">Sort By</h3>
-              <div className="space-y-2 px-2">
-                {[
-                  { id: 'popular', label: 'Most Popular' },
-                  { id: 'newest', label: 'Newest' },
-                  { id: 'price-low', label: 'Price: Low to High' },
-                  { id: 'price-high', label: 'Price: High to Low' }
-                ].map(item => (
-                  <label key={item.id} className="flex items-center gap-3 cursor-pointer group">
-                    <input type="radio" name="sort" checked={sortBy === item.id} onChange={() => setSortBy(item.id)} className="w-4 h-4 border-zinc-800 bg-zinc-900 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-zinc-900" />
-                    <span className="text-sm font-medium group-hover:text-zinc-200 transition-colors">{item.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Price Range */}
-            <div className="space-y-4">
-              <div className="flex justify-between items-center px-2">
-                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Price Range</h3>
-                <span className="text-[10px] font-bold text-indigo-400">${priceRange}+</span>
-              </div>
-              <div className="px-2">
-                <input 
-                  type="range" min="0" max="800" step="50" 
-                  value={priceRange} 
-                  onChange={e => setPriceRange(parseInt(e.target.value))}
-                  className="w-full h-1.5 bg-zinc-900 rounded-lg appearance-none cursor-pointer accent-indigo-600" 
-                />
-                <div className="flex justify-between mt-2 text-[10px] font-bold text-zinc-600">
-                  <span>$0</span>
-                  <span>$800+</span>
+          <div className="p-6 lg:p-12 space-y-12">
+            {/* Sticky Search Bar (Top of Main) */}
+            <div className="sticky top-20 z-40 bg-[#0a0a0a]/80 backdrop-blur-md pb-8 -mx-4 px-4 lg:mx-0 lg:px-0">
+              <div className="flex flex-col md:flex-row gap-6 items-center">
+                <div className="relative group flex-1 w-full">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-white transition-colors" />
+                  <Input 
+                    placeholder="Search premium skills..." 
+                    value={filters.searchQuery}
+                    onChange={(e) => updateFilter({ searchQuery: e.target.value })}
+                    className="pl-12 bg-zinc-900 border-zinc-800 h-14 rounded-2xl focus-visible:ring-indigo-500 text-lg font-medium w-full shadow-2xl"
+                  />
+                </div>
+                <div className="hidden lg:flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-zinc-500 px-4">
+                  {filteredSkills.length} results
                 </div>
               </div>
             </div>
 
-          </div>
-        </aside>
-
-        {/* MAIN GRID AREA */}
-        <main className="flex-1 p-6 lg:p-12 space-y-12">
-          
-          {/* Mobile Filter Toggle */}
-          <div className="lg:hidden flex items-center justify-between mb-8 pt-16">
-             <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-sm font-bold text-white"
-             >
-               <Menu className="w-4 h-4" /> Filters
-             </button>
-             <span className="text-xs font-bold uppercase tracking-widest">{filteredSkills.length} skills</span>
-          </div>
-
-          {/* Sticky Search Bar */}
-          <div className="sticky top-20 z-40 bg-[#0a0a0a]/80 backdrop-blur-md pt-4 pb-8 -mx-4 px-4 lg:mx-0 lg:px-0">
-            <div className="flex flex-col md:flex-row gap-6 items-center">
-              <div className="relative group flex-1 w-full">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-white transition-colors" />
-                <Input 
-                  placeholder="Search skills, categories, or keywords..." 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-12 bg-zinc-900 border-zinc-800 h-14 rounded-2xl focus-visible:ring-indigo-500 text-lg font-medium w-full shadow-2xl"
-                />
-              </div>
-              <div className="hidden lg:flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-zinc-500 px-4 whitespace-nowrap">
-                {filteredSkills.length} results
-              </div>
+            {/* Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+              <AnimatePresence mode="popLayout">
+                {filteredSkills.map((skill, index) => (
+                  <SkillCard key={skill.id} skill={skill} index={index} />
+                ))}
+              </AnimatePresence>
             </div>
-          </div>
 
-          {/* Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-            <AnimatePresence mode="popLayout">
-              {filteredSkills.map((skill, index) => (
-                <SkillCard key={skill.id} skill={skill} index={index} />
-              ))}
-            </AnimatePresence>
-          </div>
-
-          {/* Empty State */}
-          {filteredSkills.length === 0 && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center py-48 bg-zinc-900/30 border border-zinc-800 border-dashed rounded-[3rem] flex flex-col items-center"
-            >
-              <div className="w-20 h-20 bg-zinc-800 rounded-[2rem] flex items-center justify-center mb-8">
-                <Filter className="w-10 h-10 text-zinc-600" />
+            {/* 7. EMPTY STATES */}
+            {filteredSkills.length === 0 && (
+              <div className="py-48 text-center bg-zinc-900/30 border border-zinc-800 border-dashed rounded-[3rem] flex flex-col items-center">
+                {filters.searchQuery ? (
+                  <>
+                    <div className="w-20 h-20 bg-zinc-800 rounded-[2rem] flex items-center justify-center mb-8">
+                      <SearchX className="w-10 h-10 text-zinc-600" />
+                    </div>
+                    <h3 className="text-2xl font-semibold text-white mb-2 tracking-tight">No skills match '{filters.searchQuery}'</h3>
+                    <p className="text-zinc-500 max-w-sm mb-8 leading-relaxed font-medium text-sm">Try a different keyword or browse all skills.</p>
+                    <button 
+                      onClick={() => updateFilter({ searchQuery: '' })}
+                      className="text-indigo-400 font-bold hover:text-white transition-colors uppercase text-[10px] tracking-widest"
+                    >
+                      Clear search
+                    </button>
+                  </>
+                ) : filters.activeCategory !== 'all' ? (
+                  <>
+                    <div className="w-20 h-20 bg-zinc-800 rounded-[2rem] flex items-center justify-center mb-8">
+                      <PackageOpen className="w-10 h-10 text-zinc-600" />
+                    </div>
+                    <h3 className="text-2xl font-semibold text-white mb-2 tracking-tight">No {filters.activeCategory} skills yet</h3>
+                    <p className="text-zinc-500 max-w-sm mb-8 leading-relaxed font-medium text-sm">Be the first to publish one.</p>
+                    <div className="flex gap-6">
+                      <button 
+                        onClick={() => updateFilter({ activeCategory: 'all' })}
+                        className="text-zinc-400 font-bold hover:text-white transition-colors uppercase text-[10px] tracking-widest"
+                      >
+                        Browse all
+                      </button>
+                      <Link href="/publish" className="text-indigo-400 font-bold hover:text-white transition-colors uppercase text-[10px] tracking-widest flex items-center gap-1">
+                        Publish a skill <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-20 h-20 bg-zinc-800 rounded-[2rem] flex items-center justify-center mb-8">
+                      <SlidersHorizontal className="w-10 h-10 text-zinc-600" />
+                    </div>
+                    <h3 className="text-2xl font-semibold text-white mb-2 tracking-tight">No skills in this price range</h3>
+                    <p className="text-zinc-500 max-w-sm mb-8 leading-relaxed font-medium text-sm">Try adjusting the price slider.</p>
+                    <button 
+                      onClick={() => updateFilter({ priceRange: 800 })}
+                      className="text-indigo-400 font-bold hover:text-white transition-colors uppercase text-[10px] tracking-widest"
+                    >
+                      Reset price filter
+                    </button>
+                  </>
+                )}
               </div>
-              <h3 className="text-2xl font-semibold text-white mb-2">No skills found for "{searchQuery}"</h3>
-              <p className="text-zinc-500 max-w-sm mb-8 leading-relaxed">Try adjusting your filters or category to find more capabilities.</p>
-              <button 
-                onClick={() => {
-                  setSearchQuery('');
-                  setActiveCategory('all');
-                  setComplianceOnly(false);
-                  setProviderAgnosticOnly(false);
-                  setFreeOnly(false);
-                  setPriceRange(800);
-                }}
-                className="text-indigo-400 font-bold hover:text-white transition-colors uppercase text-xs tracking-widest"
-              >
-                Clear all filters
-              </button>
-            </motion.div>
-          )}
+            )}
+          </div>
         </main>
       </div>
 
-      {/* MOBILE SIDEBAR OVERLAY */}
+      {/* 5. MOBILE DRAWER */}
       <AnimatePresence>
         {isSidebarOpen && (
-          <>
+          <div className="fixed inset-0 z-[150] lg:hidden">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsSidebarOpen(false)}
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[150]"
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
             />
-            <motion.div 
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 w-full max-w-xs bg-zinc-950 border-r border-zinc-800 z-[160] p-8 overflow-y-auto"
-            >
-              <div className="flex justify-between items-center mb-12">
-                <span className="font-bold text-white uppercase text-xs tracking-[0.2em]">Filters</span>
-                <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-zinc-900 rounded-lg transition-colors">
-                  <X className="w-6 h-6 text-zinc-500" />
-                </button>
-              </div>
-
-              {/* Duplicate Sidebar Content for Mobile */}
-              <div className="space-y-12">
-                <div className="space-y-6">
-                  <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Categories</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {categoryFilters.map((cat) => (
-                      <button
-                        key={cat.id}
-                        onClick={() => {
-                          setActiveCategory(cat.id);
-                          setIsSidebarOpen(false);
-                        }}
-                        className={`px-4 py-3 rounded-xl text-left text-xs font-bold transition-all border ${
-                          activeCategory === cat.id 
-                            ? 'border-indigo-500 bg-indigo-500/10 text-white' 
-                            : 'border-zinc-800 text-zinc-500'
-                        }`}
-                      >
-                        {cat.name.split(' ')[0]}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Features</h3>
-                  <div className="space-y-4">
-                    <label className="flex items-center gap-4 cursor-pointer">
-                      <input type="checkbox" checked={providerAgnosticOnly} onChange={e => setProviderAgnosticOnly(e.target.checked)} className="w-5 h-5 rounded border-zinc-800 bg-zinc-900 text-indigo-600" />
-                      <span className="text-sm font-medium text-zinc-300">Provider Agnostic</span>
-                    </label>
-                    <label className="flex items-center gap-4 cursor-pointer">
-                      <input type="checkbox" checked={complianceOnly} onChange={e => setComplianceOnly(e.target.checked)} className="w-5 h-5 rounded border-zinc-800 bg-zinc-900 text-indigo-600" />
-                      <span className="text-sm font-medium text-zinc-300">Compliance Ready</span>
-                    </label>
-                  </div>
-                </div>
-
-                <Button 
-                  onClick={() => setIsSidebarOpen(false)}
-                  className="w-full h-14 bg-white text-black hover:bg-zinc-200 rounded-2xl font-bold uppercase tracking-widest mt-8"
+            <RemoveScroll>
+              <FocusLock returnFocus>
+                <motion.div 
+                  role="dialog" 
+                  aria-modal="true"
+                  aria-label="Filters"
+                  onKeyDown={(e) => e.key === 'Escape' && setIsSidebarOpen(false)}
+                  initial={{ x: '-100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '-100%' }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                  className="absolute inset-y-0 left-0 w-full max-w-xs bg-zinc-950 border-r border-zinc-800 p-8 flex flex-col"
                 >
-                  Apply Filters
-                </Button>
-              </div>
-            </motion.div>
-          </>
+                  <div className="flex justify-between items-center mb-12">
+                    <span className="font-bold text-white uppercase text-xs tracking-[0.2em]">Filters</span>
+                    <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-zinc-900 rounded-lg transition-colors">
+                      <X className="w-6 h-6 text-zinc-500" />
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto no-scrollbar pb-8">
+                    <SidebarContent />
+                  </div>
+
+                  <Button 
+                    onClick={handleApply}
+                    className="w-full h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold uppercase tracking-widest mt-8 shadow-lg shadow-indigo-600/20"
+                  >
+                    Apply Filters
+                  </Button>
+                </motion.div>
+              </FocusLock>
+            </RemoveScroll>
+          </div>
         )}
       </AnimatePresence>
 

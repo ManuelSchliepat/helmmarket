@@ -26,6 +26,17 @@ export function SkillCard({ skill, index = 0 }: { skill: Skill, index?: number }
     'general': 'General',
   };
 
+  // Badge logic: max 2 + "+N more"
+  const badges = [];
+  if (skill.provider_switchable) badges.push('Agnostic');
+  if (skill.compliance_labels && skill.compliance_labels.length > 0) badges.push('Compliant');
+  if (skill.price_cents === 0) badges.push('Free');
+  // Add tags as potential badges to test the "+N more" logic
+  skill.tags.forEach(tag => badges.push(tag.charAt(0).toUpperCase() + tag.slice(1)));
+
+  const visibleBadges = badges.slice(0, 2);
+  const remainingCount = badges.length - 2;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -34,30 +45,33 @@ export function SkillCard({ skill, index = 0 }: { skill: Skill, index?: number }
       className="h-full"
     >
       <Link href={`/skills/${skill.slug}`} className="block h-full group">
-        <Card className="h-full min-h-[300px] flex flex-col p-6 bg-zinc-900 border-zinc-800 rounded-2xl hover:border-zinc-600 transition-all duration-300 shadow-none relative overflow-hidden">
+        <Card className="h-full min-h-[320px] flex flex-col p-6 bg-zinc-900 border-zinc-800 rounded-2xl hover:border-zinc-600 transition-all duration-300 shadow-none relative overflow-hidden">
           
-          {/* Status Badges */}
           <div className="flex justify-between items-start mb-6">
             <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
               <Zap className="w-5 h-5 fill-current" />
             </div>
-            <div className="flex flex-col items-end gap-2">
-              <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-800/50 px-2 py-0.5 rounded border border-zinc-800">
-                {categoryLabels[skill.category]}
-              </div>
-              {skill.provider_switchable && (
-                <div className="text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1 uppercase tracking-tighter">
-                  <Check className="w-2.5 h-2.5" /> Provider Agnostic
-                </div>
+            
+            {/* Badge Container */}
+            <div className="flex flex-wrap gap-1.5 justify-end max-w-[140px]">
+              {visibleBadges.map(badge => (
+                <span key={badge} className="text-[9px] font-bold text-zinc-400 bg-zinc-800/50 px-2 py-0.5 rounded border border-zinc-800 uppercase tracking-tight">
+                  {badge}
+                </span>
+              ))}
+              {remainingCount > 0 && (
+                <span className="text-[9px] font-bold text-zinc-500 bg-zinc-800/30 px-2 py-0.5 rounded border border-zinc-800 uppercase tracking-tight">
+                  +{remainingCount} more
+                </span>
               )}
             </div>
           </div>
 
-          <div className="flex-1">
-            <h3 className="text-lg font-medium text-white mb-2 group-hover:text-indigo-400 transition-colors leading-tight">
+          <div className="flex-1 space-y-3">
+            <h3 className="text-lg font-medium text-white group-hover:text-indigo-400 transition-colors leading-tight line-clamp-2 min-h-[3.4rem]">
               {skill.name}
             </h3>
-            <p className="text-sm text-zinc-400 line-clamp-3 leading-relaxed font-medium">
+            <p className="text-sm text-zinc-400 line-clamp-3 leading-[1.7] font-medium min-h-[4.5rem]">
               {skill.description}
             </p>
           </div>
@@ -74,7 +88,7 @@ export function SkillCard({ skill, index = 0 }: { skill: Skill, index?: number }
                 <span className="text-[10px] font-bold uppercase tracking-tighter">{authorHandle}</span>
               </div>
             </div>
-            <div className="text-sm font-bold text-white">
+            <div className="text-sm font-bold text-white whitespace-nowrap ml-4">
               {skill.price_cents === 0 ? 'Free' : `$${price}`}
             </div>
           </div>
