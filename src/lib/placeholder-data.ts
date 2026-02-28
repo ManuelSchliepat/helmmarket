@@ -309,7 +309,7 @@ export const placeholderSkills: Skill[] = [
     id: 'gen-1',
     name: 'weather',
     slug: 'weather',
-    description: 'Gibt eine Stadt oder GPS-Koordinaten ein und bekommt Echtzeit-Wetter und 7-Tage-Prognose zurück — ohne API-Key, ohne Kosten. Für jeden Agent der wetterbezogene Entscheidungen treffen muss.',
+    description: 'Abruf von Echtzeit-Wetter und Prognosen über Industriestandard-Schnittstellen. Unterstützt die Einbindung eigener API-Keys (z.B. OpenWeatherMap) für professionelle Skalierung. Für Agenten in Logistik und Travel, die auf verlässliche Umweltdaten angewiesen sind.',
     price_cents: 1900,
     status: 'published',
     registry_endpoint: '@helm-market/weather',
@@ -319,7 +319,7 @@ export const placeholderSkills: Skill[] = [
     providers: ['openai', 'gemini'],
     provider_switchable: true,
     compliance_labels: [],
-    code_example: `import { weather } from '@helm-market/weather'\nconst agent = new Helm({ skills: [weather] })\nconst current = await agent.run("Check weather in Munich")`,
+    code_example: `import { weather } from '@helm-market/weather'\nconst agent = new Helm({ skills: [weather], config: { apiKey: 'OWM_KEY' } })\nconst current = await agent.run("Check weather in Munich")`,
   },
   {
     id: 'gen-2',
