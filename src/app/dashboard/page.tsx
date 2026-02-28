@@ -6,8 +6,13 @@ import { Button } from '@/components/ui/button'
 import { getDeveloper } from '@/services/supabase/skills'
 import { LayoutDashboard, Package, BarChart3, CreditCard, Settings, CheckCircle2, Circle, ArrowRight } from 'lucide-react'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ 
+  searchParams 
+}: { 
+  searchParams: Promise<{ submitted?: string }> 
+}) {
   const { userId } = await auth()
+  const params = await searchParams
   
   if (!userId) redirect('/onboarding')
 
@@ -15,7 +20,15 @@ export default async function DashboardPage() {
   if (!developer?.stripe_account_id) redirect('/onboarding')
 
   return (
-    <div className="container mx-auto py-32 px-6 flex flex-col lg:flex-row gap-16">
+    <div className="container mx-auto py-32 px-6 flex flex-col lg:flex-row gap-16 relative">
+      {params.submitted === 'true' && (
+        <div className="absolute top-12 left-6 right-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-3 text-emerald-500 z-10 animate-in fade-in slide-in-from-top-4 duration-500">
+          <CheckCircle2 className="w-5 h-5" />
+          <p className="text-sm font-bold uppercase tracking-widest">
+            Your skill has been submitted and is pending review. You'll be notified when it goes live.
+          </p>
+        </div>
+      )}
       
       {/* Sidebar */}
       <aside className="w-full lg:w-64 shrink-0">

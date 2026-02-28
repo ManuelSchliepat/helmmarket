@@ -25,6 +25,7 @@ export async function POST(request: Request) {
 
   try {
     const skillData = await request.json()
+    console.log("Skill submission received for user:", userId, skillData)
     
     // Parse and validate config if provided
     let parsedConfig = {}
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
       try {
         parsedConfig = JSON.parse(skillData.config)
       } catch (e) {
+        console.error("Invalid config JSON:", skillData.config)
         return NextResponse.json({ error: 'Invalid JSON in helm.config.json' }, { status: 400 })
       }
     }
@@ -51,13 +53,21 @@ export async function POST(request: Request) {
       .single()
 
     if (skillError) {
-      console.error('Skill insert error:', skillError)
-      return NextResponse.json({ error: skillError.message }, { status: 500 })
+      console.error('Skill insert error details:', JSON.stringify(skillError))
+      return NextResponse.json({ 
+        error: true, 
+        message: skillError.message,
+        details: skillError.details
+      }, { status: 500 })
     }
 
+    console.log("Skill created successfully:", skill.id)
     return NextResponse.json(skill)
-  } catch (err) {
+  } catch (err: any) {
     console.error('Skill submission catch error:', err)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ 
+      error: true, 
+      message: err.message || 'Internal server error' 
+    }, { status: 500 })
   }
 }

@@ -4,11 +4,13 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Info, ShieldCheck, Zap, HelpCircle, X, ExternalLink } from 'lucide-react'
+import { Info, ShieldCheck, Zap, HelpCircle, X, ExternalLink, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CodeBlock } from '@/components/ui/CodeBlock'
+import { useRouter } from 'next/navigation'
 
 export function SkillSubmissionForm() {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -120,10 +122,19 @@ export function SkillSubmissionForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       })
-      if (response.ok) setStatus('success')
-      else setStatus('error')
-    } catch (err) {
+      if (response.ok) {
+        setStatus('success')
+        router.push('/dashboard?submitted=true')
+      } else {
+        const errData = await response.json()
+        console.error('Submission failed:', errData)
+        setStatus('error')
+        alert(`Submission failed: ${errData.message || 'Unknown error'}`)
+      }
+    } catch (err: any) {
+      console.error('Submission error:', err)
       setStatus('error')
+      alert(`An error occurred: ${err.message}`)
     }
   }
 
@@ -134,8 +145,7 @@ export function SkillSubmissionForm() {
           <ShieldCheck className="w-12 h-12 text-emerald-500" />
         </div>
         <h2 className="text-4xl font-black text-white tracking-tighter">Submission Received</h2>
-        <p className="mt-6 text-zinc-400 font-medium max-w-sm mx-auto leading-relaxed">Your skill is now in the verification queue. We'll audit the registry endpoint and notify you via email.</p>
-        <Button variant="outline" className="mt-12 border-zinc-800 text-zinc-400 hover:text-white rounded-full px-8" onClick={() => setStatus('idle')}>Submit Another Skill</Button>
+        <p className="mt-6 text-zinc-400 font-medium max-w-sm mx-auto leading-relaxed">Your skill is now in the verification queue. Redirecting to dashboard...</p>
       </div>
     )
   }
@@ -381,7 +391,12 @@ export function SkillSubmissionForm() {
       </div>
 
       <Button type="submit" size="lg" className="w-full h-20 text-xl bg-white text-black hover:bg-zinc-200 rounded-3xl font-black uppercase tracking-widest shadow-2xl transition-all active:scale-[0.98]" disabled={status === 'submitting'}>
-        {status === 'submitting' ? 'Verifying Integrity...' : 'Submit Skill for Review'}
+        {status === 'submitting' ? (
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-6 h-6 animate-spin" />
+            <span>Verifying Integrity...</span>
+          </div>
+        ) : 'Submit Skill for Review'}
       </Button>
 
       {/* Example Modal */}
