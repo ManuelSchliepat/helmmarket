@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getHighlighter } from 'shiki'
+import { createHighlighter } from 'shiki'
 
 export function CodeBlock({ code, lang }: { code: string; lang: string }) {
   const [html, setHtml] = useState('')
@@ -10,12 +10,15 @@ export function CodeBlock({ code, lang }: { code: string; lang: string }) {
     let mounted = true
     async function highlight() {
       try {
-        const highlighter = await getHighlighter({
+        const highlighter = await createHighlighter({
           themes: ['github-dark'],
           langs: ['bash', 'json', 'typescript', 'yaml'],
         })
         if (!mounted) return
-        const result = highlighter.codeToHtml(code, { lang, theme: 'github-dark' })
+        const result = highlighter.codeToHtml(code, { 
+          lang, 
+          theme: 'github-dark' 
+        })
         setHtml(result)
       } catch (e) {
         console.error('Failed to highlight code:', e)
