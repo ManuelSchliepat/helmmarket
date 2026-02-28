@@ -1,0 +1,13 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100" height="100" fill="#0a0a0a"/>
+  <!-- Left bar -->
+  <rect x="28" y="28" width="14" height="44" fill="#6366f1"/>
+  <!-- Right bar -->
+  <rect x="58" y="28" width="14" height="44" fill="#6366f1"/>
+  <!-- Connector -->
+  <rect x="42" y="46" width="16" height="8" fill="#818cf8"/>
+  <!-- Notch cutout -->
+  <rect x="58" y="64" width="6" height="8" fill="#0a0a0a"/>
+  <!-- Accent plug -->
+  <rect x="66" y="64" width="6" height="8" fill="#818cf8"/>
+</svg>

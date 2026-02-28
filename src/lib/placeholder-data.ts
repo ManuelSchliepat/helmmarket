@@ -1,5 +1,31 @@
 // Comprehensive Placeholder Data for Helm Market
 
+export type Provider = 'openai' | 'gemini' | 'anthropic' | 'llama' | 'custom';
+export type Category = 'general' | 'security' | 'energy-industrial' | 'data-analytics' | 'automation' | 'compliance';
+export type ComplianceLabel = 'EU_AI_ACT' | 'US_FEDERAL' | 'GDPR' | 'SOC2' | 'ISO27001';
+
+export interface Skill {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  price_cents: number;
+  status: string;
+  registry_endpoint: string;
+  permissions: string[];
+  tags: string[];
+  category: Category;
+  providers: Provider[];
+  provider_switchable: boolean;
+  compliance_labels: ComplianceLabel[];
+  developer_id?: string;
+  developers?: {
+    users?: {
+      full_name: string;
+    }
+  };
+}
+
 export const landingStats = {
   developers: 2400,
   installations: 12847,
@@ -13,6 +39,15 @@ export const companies = [
   { name: 'Linear', logo: '/linear.svg', color: '#5E6AD2' },
   { name: 'GitHub', logo: '/github.svg', color: '#181717' },
   { name: 'Supabase', logo: '/supabase.svg', color: '#3ECF8E' },
+];
+
+export const providers = [
+  { id: 'openai', name: 'OpenAI', color: '#10A37F' },
+  { id: 'gemini', name: 'Google Gemini', color: '#4285F4' },
+  { id: 'anthropic', name: 'Anthropic', color: '#D97706' },
+  { id: 'llama', name: 'Meta Llama', color: '#9333EA' },
+  { id: 'mistral', name: 'Mistral', color: '#FACC15' },
+  { id: 'custom', name: 'Custom/Self-hosted', color: '#6366F1' },
 ];
 
 export const featuredIn = [
@@ -57,29 +92,204 @@ export const recentInstalls = [
   { handle: '@ai_enthusiast', skill: 'claude-context-builder', timeAgo: '1 hr ago' },
   { handle: '@ruby_dev', skill: 'redis-optimizer', timeAgo: '1 hr ago' },
   { handle: '@golang_guru', skill: 'github-pr-reviewer', timeAgo: '2 hrs ago' },
-  { handle: '@python_pro', skill: 'scikit-learn-helper', timeAgo: '2 hrs ago' },
-  { handle: '@rust_fan', skill: 'memory-safe-analyzer', timeAgo: '3 hrs ago' },
-  { handle: '@node_ninja', skill: 'express-generator-skill', timeAgo: '3 hrs ago' },
-  { handle: '@deno_dev', skill: 'fetch-retry-skill', timeAgo: '4 hrs ago' },
-  { handle: '@bun_user', skill: 'fast-json-parser', timeAgo: '4 hrs ago' },
-  { handle: '@java_junkie', skill: 'maven-dep-checker', timeAgo: '5 hrs ago' },
-  { handle: '@cpp_coder', skill: 'pointer-protector', timeAgo: '5 hrs ago' },
-  { handle: '@swift_ui', skill: 'ios-icon-gen', timeAgo: '6 hrs ago' },
-  { handle: '@kotlin_dev', skill: 'android-log-parser', timeAgo: '6 hrs ago' },
-  { handle: '@go_pher', skill: 'goroutine-analyzer', timeAgo: '7 hrs ago' },
 ];
 
 export const categoryFilters = [
-  { name: 'All Skills', count: 247 },
-  { name: 'Crypto', count: 34 },
-  { name: 'Finance', count: 28 },
-  { name: 'Productivity', count: 41 },
-  { name: 'Communication', count: 19 },
-  { name: 'Data', count: 38 },
-  { name: 'DevTools', count: 31 },
-  { name: 'Marketing', count: 22 },
-  { name: 'Security', count: 15 },
-  { name: 'Other', count: 19 },
+  { name: 'All Skills', id: 'all', count: 247 },
+  { name: 'Security 🔒', id: 'security', count: 34 },
+  { name: 'Compliance ✅', id: 'compliance', count: 28 },
+  { name: 'Energy ⚡', id: 'energy-industrial', count: 41 },
+  { name: 'Analytics 📊', id: 'data-analytics', count: 38 },
+  { name: 'Automation 🤖', id: 'automation', count: 31 },
+  { name: 'General 🔧', id: 'general', count: 22 },
+];
+
+export const placeholderSkills: Skill[] = [
+  // SECURITY
+  {
+    id: 'sec-1',
+    name: 'helm-skill-vuln-scanner',
+    slug: 'vuln-scanner',
+    description: 'Automated vulnerability scan via NIST NVD API. Provides real-time threat intelligence for your dependencies.',
+    price_cents: 19900,
+    status: 'published',
+    registry_endpoint: '@helm-market/vuln-scanner',
+    permissions: ['internet-access'],
+    tags: ['security', 'nist', 'vulnerability'],
+    category: 'security',
+    providers: ['openai', 'anthropic'],
+    provider_switchable: true,
+    compliance_labels: ['SOC2', 'ISO27001'],
+  },
+  {
+    id: 'sec-2',
+    name: 'helm-skill-zero-trust-checker',
+    slug: 'zero-trust-checker',
+    description: 'Validates Zero Trust policy compliance across your distributed network architecture.',
+    price_cents: 29900,
+    status: 'published',
+    registry_endpoint: '@helm-market/zero-trust',
+    permissions: ['read-files', 'internet-access'],
+    tags: ['security', 'zero-trust', 'compliance'],
+    category: 'security',
+    providers: ['llama', 'custom'],
+    provider_switchable: true,
+    compliance_labels: ['SOC2'],
+  },
+  {
+    id: 'sec-3',
+    name: 'helm-skill-audit-trail',
+    slug: 'audit-trail',
+    description: 'Immutable audit log writer to Supabase. Ensures all agent actions are logged for forensic analysis.',
+    price_cents: 9900,
+    status: 'published',
+    registry_endpoint: '@helm-market/audit-trail',
+    permissions: ['write-files'],
+    tags: ['security', 'audit', 'logging'],
+    category: 'security',
+    providers: ['openai'],
+    provider_switchable: false,
+    compliance_labels: ['GDPR', 'SOC2'],
+  },
+  {
+    id: 'sec-4',
+    name: 'helm-skill-anomaly-detect',
+    slug: 'anomaly-detect',
+    description: 'Network anomaly detection via baseline AI. Identifies suspicious traffic patterns in real-time.',
+    price_cents: 49900,
+    status: 'published',
+    registry_endpoint: '@helm-market/anomaly-detect',
+    permissions: ['internet-access', 'execute-scripts'],
+    tags: ['security', 'ai', 'network'],
+    category: 'security',
+    providers: ['openai', 'gemini', 'anthropic'],
+    provider_switchable: true,
+    compliance_labels: ['ISO27001'],
+  },
+
+  // COMPLIANCE
+  {
+    id: 'comp-1',
+    name: 'helm-skill-eu-ai-act-audit',
+    slug: 'eu-ai-act-audit',
+    description: 'Checks AI outputs against EU AI Act rules. Automatically generates compliance reports for regulators.',
+    price_cents: 59900,
+    status: 'published',
+    registry_endpoint: '@helm-market/eu-ai-audit',
+    permissions: ['internet-access'],
+    tags: ['compliance', 'eu', 'ai-act'],
+    category: 'compliance',
+    providers: ['anthropic', 'openai'],
+    provider_switchable: true,
+    compliance_labels: ['EU_AI_ACT'],
+  },
+  {
+    id: 'comp-2',
+    name: 'helm-skill-gdpr-data-scan',
+    slug: 'gdpr-data-scan',
+    description: 'Scans data pipelines for GDPR violations. Detects PII leaks before they hit your production database.',
+    price_cents: 34900,
+    status: 'published',
+    registry_endpoint: '@helm-market/gdpr-scan',
+    permissions: ['read-files'],
+    tags: ['compliance', 'gdpr', 'pii'],
+    category: 'compliance',
+    providers: ['llama', 'custom'],
+    provider_switchable: true,
+    compliance_labels: ['GDPR'],
+  },
+  {
+    id: 'comp-3',
+    name: 'helm-skill-us-federal-ai',
+    slug: 'us-federal-ai',
+    description: 'Validates AI use against US Federal AI policy. Ensures your agents meet government transparency standards.',
+    price_cents: 44900,
+    status: 'published',
+    registry_endpoint: '@helm-market/us-fed-ai',
+    permissions: ['internet-access'],
+    tags: ['compliance', 'us-federal', 'policy'],
+    category: 'compliance',
+    providers: ['openai', 'anthropic'],
+    provider_switchable: false,
+    compliance_labels: ['US_FEDERAL'],
+  },
+  {
+    id: 'comp-4',
+    name: 'helm-skill-llm-bias-check',
+    slug: 'llm-bias-check',
+    description: 'Detects bias in LLM outputs with detailed reporting. Essential for ethical AI deployment.',
+    price_cents: 14900,
+    status: 'published',
+    registry_endpoint: '@helm-market/bias-check',
+    permissions: ['internet-access'],
+    tags: ['compliance', 'bias', 'ethics'],
+    category: 'compliance',
+    providers: ['openai', 'gemini', 'anthropic', 'llama'],
+    provider_switchable: true,
+    compliance_labels: ['EU_AI_ACT', 'US_FEDERAL'],
+  },
+
+  // ENERGY
+  {
+    id: 'energy-1',
+    name: 'helm-skill-grid-optimizer',
+    slug: 'grid-optimizer',
+    description: 'Smart grid load balancing via AI prediction. Optimizes energy distribution for industrial facilities.',
+    price_cents: 79900,
+    status: 'published',
+    registry_endpoint: '@helm-market/grid-opt',
+    permissions: ['internet-access', 'execute-scripts'],
+    tags: ['energy', 'grid', 'optimization'],
+    category: 'energy-industrial',
+    providers: ['openai', 'custom'],
+    provider_switchable: true,
+    compliance_labels: ['ISO27001'],
+  },
+  {
+    id: 'energy-2',
+    name: 'helm-skill-energy-forecast',
+    slug: 'energy-forecast',
+    description: '24h energy demand forecasting agent. Uses historical data and weather patterns to predict usage.',
+    price_cents: 29900,
+    status: 'published',
+    registry_endpoint: '@helm-market/energy-forecast',
+    permissions: ['internet-access'],
+    tags: ['energy', 'forecast', 'ai'],
+    category: 'energy-industrial',
+    providers: ['gemini', 'openai'],
+    provider_switchable: true,
+    compliance_labels: [],
+  },
+  {
+    id: 'energy-3',
+    name: 'helm-skill-material-search',
+    slug: 'material-search',
+    description: 'AI search over material science databases. Accelerates R&D for new industrial materials.',
+    price_cents: 19900,
+    status: 'published',
+    registry_endpoint: '@helm-market/material-search',
+    permissions: ['internet-access'],
+    tags: ['industrial', 'science', 'research'],
+    category: 'energy-industrial',
+    providers: ['anthropic', 'openai'],
+    provider_switchable: false,
+    compliance_labels: [],
+  },
+  {
+    id: 'energy-4',
+    name: 'helm-skill-sensor-pipeline',
+    slug: 'sensor-pipeline',
+    description: 'Industrial IoT sensor data → AI insights. Processes high-frequency telemetry into actionable reports.',
+    price_cents: 39900,
+    status: 'published',
+    registry_endpoint: '@helm-market/sensor-pipeline',
+    permissions: ['read-files', 'execute-scripts'],
+    tags: ['industrial', 'iot', 'telemetry'],
+    category: 'energy-industrial',
+    providers: ['llama', 'custom'],
+    provider_switchable: true,
+    compliance_labels: ['SOC2'],
+  },
 ];
 
 export const placeholderReviews = [

@@ -1,0 +1,12 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Left bar -->
+  <rect x="28" y="28" width="14" height="44" fill="#6366f1"/>
+  <!-- Right bar (Top part) -->
+  <rect x="58" y="28" width="14" height="36" fill="#6366f1"/>
+  <!-- Right bar (Bottom-right part, avoiding the notch) -->
+  <rect x="64" y="64" width="8" height="8" fill="#6366f1"/>
+  <!-- Connector -->
+  <rect x="42" y="46" width="16" height="8" fill="#818cf8"/>
+  <!-- Accent plug -->
+  <rect x="66" y="64" width="6" height="8" fill="#818cf8"/>
+</svg>

@@ -1,17 +1,22 @@
 'use client'
 
 import Link from "next/link";
+import Image from "next/image";
 import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { Zap, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 export function Header() {
   return (
     <header className="px-6 lg:px-10 h-20 flex items-center border-b border-gray-800/50 bg-[#09090b]/80 backdrop-blur-xl sticky top-0 z-50">
       <Link className="flex items-center justify-center gap-3 group" href="/">
-        <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-600/20 group-hover:scale-110 transition-transform duration-500">
-          <Zap className="w-6 h-6 text-white fill-current" />
-        </div>
+        <Image 
+          src="/logo.svg" 
+          alt="Helm Market Logo" 
+          width={32} 
+          height={32} 
+          className="rounded-lg group-hover:scale-110 transition-transform duration-500 shadow-lg shadow-indigo-600/10"
+        />
         <span className="font-black text-2xl text-white tracking-tighter">Helm Market</span>
       </Link>
       

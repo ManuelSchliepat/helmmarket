@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { getDeveloper } from '@/services/supabase/skills'
-import { LayoutDashboard, Package, BarChart3, CreditCard, Settings, Plus, CheckCircle2, Circle, ArrowUpRight, TrendingUp, AlertCircle } from 'lucide-react'
+import { LayoutDashboard, Package, BarChart3, CreditCard, Settings, Plus, CheckCircle2, Circle, ArrowUpRight, TrendingUp, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react'
 
 export default async function DashboardPage() {
   const { userId } = await auth()

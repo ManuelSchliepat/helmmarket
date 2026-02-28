@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ShieldCheck, Zap } from "lucide-react";
 
 export function Footer() {
@@ -10,9 +11,13 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 mb-20">
           <div className="flex flex-col gap-6 max-w-xs">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-600/20 group-hover:scale-110 transition-transform duration-500">
-                <Zap className="w-6 h-6 text-white fill-current" />
-              </div>
+              <Image 
+                src="/logo.svg" 
+                alt="Helm Market Logo" 
+                width={40} 
+                height={40} 
+                className="rounded-xl shadow-lg shadow-indigo-600/20 group-hover:scale-110 transition-transform duration-500"
+              />
               <span className="font-black text-2xl text-white tracking-tighter">Helm Market</span>
             </Link>
             <p className="text-sm font-medium leading-relaxed">
