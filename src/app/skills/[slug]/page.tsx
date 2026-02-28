@@ -5,12 +5,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { SkillDetailClient } from '@/components/skills/SkillDetailClient'
-import { ChevronLeft, ShieldCheck, Clock, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { ChevronLeft, ShieldCheck, Clock, AlertCircle, CheckCircle2, Zap } from 'lucide-react'
 import { placeholderSkills, Skill } from '@/lib/placeholder-data'
 import { CheckoutButton } from '@/components/checkout/CheckoutButton'
 import { auth } from '@clerk/nextjs/server'
 
-function getRelativeTime(dateString: string) {
+function getRelativeTime(dateString: string | undefined) {
+  if (!dateString) return "some time ago";
   const date = new Date(dateString);
   const now = new Date();
   const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
@@ -22,20 +23,41 @@ function getRelativeTime(dateString: string) {
   return `${diffInMonths} month${diffInMonths > 1 ? 's' : ''} ago`;
 }
 
+const defaultCompatibility = {
+  node: "18+",
+  typescript: "4.9+",
+  helm: "1.x",
+  nextjs: "13+"
+};
+
 export default async function SkillDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const { userId } = await auth()
   
-  let skill: Skill | null = null;
+  let rawSkill: any = null;
   try {
-    skill = await getSkillBySlug(slug)
-  } catch (e) {}
+    rawSkill = await getSkillBySlug(slug)
+  } catch (e) {
+    console.warn(`Skill slug ${slug} not found in DB, trying placeholders.`);
+  }
   
-  if (!skill) {
-    skill = placeholderSkills.find(s => s.slug === slug) as any
+  if (!rawSkill) {
+    rawSkill = placeholderSkills.find(s => s.slug === slug)
   }
 
-  if (!skill) notFound()
+  if (!rawSkill) notFound()
+
+  // Normalize Skill Data
+  const skill: Skill = {
+    ...rawSkill,
+    category: rawSkill.category || rawSkill.categories?.slug || 'general',
+    tags: rawSkill.tags || [],
+    compliance_labels: rawSkill.compliance_labels || [],
+    provider_switchable: rawSkill.provider_switchable ?? true,
+    price_cents: rawSkill.price_cents ?? 0,
+    updated_at: rawSkill.updated_at || new Date().toISOString(),
+    compatibility: rawSkill.compatibility || defaultCompatibility
+  };
 
   const price = (skill.price_cents / 100).toFixed(2)
   const publisher = skill.developers?.users;
@@ -106,9 +128,24 @@ export default async function SkillDetailPage({ params }: { params: Promise<{ sl
               </Link>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-semibold text-white mb-8 tracking-tight leading-tight">
-              {skill.name}
-            </h1>
+            <div className="mb-8">
+              <h1 className="text-5xl md:text-7xl font-semibold text-white tracking-tight leading-tight">
+                {skill.name}
+              </h1>
+              {skill.current_version && (
+                <div className="mt-4 flex items-center gap-2">
+                  <div className="px-3 py-1 rounded-full bg-zinc-800 text-zinc-400 text-sm font-medium border border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer group relative">
+                    v{skill.current_version}
+                    
+                    {/* Version History Dropdown (Hover) */}
+                    <div className="absolute top-full left-0 mt-2 w-64 p-4 bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                      <div className="text-xs font-bold text-white mb-1">v{skill.current_version} — Current</div>
+                      <div className="text-xs text-zinc-400">See changelog in dashboard.</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
             
             <div className="space-y-8">
               <p className="text-zinc-400 text-xl leading-[1.8] max-w-2xl">
@@ -152,7 +189,7 @@ export default async function SkillDetailPage({ params }: { params: Promise<{ sl
             <div className="space-y-4 text-indigo-100 text-sm font-medium mb-8">
               <div className="flex gap-3">
                 <span className="opacity-50">1.</span>
-                <span>npm install {skill.slug}</span>
+                <span>npm install {skill.registry_endpoint || skill.slug}{skill.current_version ? `@${skill.current_version}` : ''}</span>
               </div>
               <div className="flex gap-3">
                 <span className="opacity-50">2.</span>
@@ -197,11 +234,5 @@ function CompatibilityChip({ label, tooltip, isRestrictive = false }: { label: s
         {tooltip}
       </div>
     </div>
-  )
-}
-
-function Zap(props: any) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-zap"><path d="M4 14.71 12 2.5l1.54 10.29H20L12 21.5l-1.54-10.29H4Z"/></svg>
   )
 }

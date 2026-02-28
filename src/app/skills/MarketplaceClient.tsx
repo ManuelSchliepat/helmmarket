@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { SkillCard } from '@/components/skills/SkillCard'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { categoryFilters, Skill } from '@/lib/placeholder-data'
 import { applyFilters, computeCategoryCounts, Filters } from '@/lib/marketplace-filters'
-import { Search, ShieldCheck, Menu, X, Filter, SlidersHorizontal, SearchX, PackageOpen, ArrowRight } from 'lucide-react'
+import { Search, ShieldCheck, Menu, X, Filter, SlidersHorizontal, SearchX, PackageOpen, ArrowRight, Package, Shield, Star } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import FocusLock from 'react-focus-lock'
 import { RemoveScroll } from 'react-remove-scroll'
@@ -27,10 +27,23 @@ export default function MarketplaceClient({ initialSkills }: MarketplaceClientPr
     sortBy: 'popular'
   });
 
+  const [activeComplianceFilter, setActiveComplianceFilter] = useState<string>('all');
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   // 8. Performance: Memoized results and counts
-  const filteredSkills = useMemo(() => applyFilters(initialSkills, filters), [initialSkills, filters]);
+  const filteredSkills = useMemo(() => {
+    let result = applyFilters(initialSkills, filters);
+    if (activeComplianceFilter !== 'all') {
+      result = result.filter(s => s.compliance_labels?.includes(activeComplianceFilter as any));
+    }
+    return result;
+  }, [initialSkills, filters, activeComplianceFilter]);
+
+  const editorsPicks = useMemo(() => {
+    return initialSkills.filter(s => (s as any).is_editors_pick).slice(0, 3);
+  }, [initialSkills]);
+
   const categoryCounts = useMemo(() => computeCategoryCounts(initialSkills, filters), [initialSkills, filters]);
 
   // Reset scroll when category changes
@@ -74,6 +87,34 @@ export default function MarketplaceClient({ initialSkills }: MarketplaceClientPr
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* Compliance Filter */}
+      <div className="space-y-4 border-t border-zinc-900 pt-8">
+        <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
+          <Shield className="w-3 h-3" /> Compliance
+        </h3>
+        <div className="flex flex-col gap-1">
+          {[
+            { id: 'all', label: 'All Labels' },
+            { id: 'EU_AI_ACT', label: 'EU AI Act' },
+            { id: 'GDPR', label: 'GDPR' },
+            { id: 'SOC2', label: 'SOC2' },
+            { id: 'ISO27001', label: 'ISO27001' }
+          ].map((label) => (
+            <button
+              key={label.id}
+              onClick={() => setActiveComplianceFilter(label.id)}
+              className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all border-l-2 ${
+                activeComplianceFilter === label.id 
+                  ? 'border-indigo-500 bg-indigo-500/5 text-white' 
+                  : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'
+              }`}
+            >
+              {label.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -161,7 +202,7 @@ export default function MarketplaceClient({ initialSkills }: MarketplaceClientPr
           <div className="lg:hidden flex items-center justify-between p-6 pt-24 border-b border-zinc-900">
              <button 
               onClick={() => setIsSidebarOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-sm font-bold text-white transition-all active:scale-95"
+              className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-sm font-bold text-white transition-all active:scale-95 hover:border-zinc-600"
              >
                <Filter className="w-4 h-4" /> Filters
              </button>
@@ -178,7 +219,7 @@ export default function MarketplaceClient({ initialSkills }: MarketplaceClientPr
                     placeholder="Search premium skills..." 
                     value={filters.searchQuery}
                     onChange={(e) => updateFilter({ searchQuery: e.target.value })}
-                    className="pl-12 bg-zinc-900 border-zinc-800 h-14 rounded-2xl focus-visible:ring-indigo-500 text-lg font-medium w-full shadow-2xl"
+                    className="pl-12 bg-zinc-900 border-zinc-800 h-14 rounded-2xl focus-visible:ring-indigo-500 text-lg font-medium w-full shadow-2xl transition-all"
                   />
                 </div>
                 <div className="hidden lg:flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-zinc-500 px-4">
@@ -187,8 +228,34 @@ export default function MarketplaceClient({ initialSkills }: MarketplaceClientPr
               </div>
             </div>
 
+            {/* Editor's Pick Section */}
+            {editorsPicks.length > 0 && filters.searchQuery === '' && filters.activeCategory === 'all' && (
+              <section className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                    <h2 className="text-xl font-bold text-white tracking-tight">Editor's Pick</h2>
+                  </div>
+                  <p className="text-sm text-zinc-500 font-medium">Updated daily by our curation algorithm</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {editorsPicks.map((skill, index) => (
+                    <div key={skill.id} className="relative group">
+                      <div className="absolute -top-2 -right-2 z-10 px-2 py-1 bg-amber-500 text-black text-[8px] font-black uppercase rounded shadow-lg shadow-amber-500/20 flex items-center gap-1">
+                        <Star className="w-2.5 h-2.5 fill-current" /> Editor's Pick
+                      </div>
+                      <div className="h-full border border-amber-500/30 rounded-2xl overflow-hidden group-hover:border-amber-500/50 transition-all duration-300">
+                        <SkillCard skill={skill} index={index} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-b border-zinc-900 pt-8" />
+              </section>
+            )}
+
             {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <AnimatePresence mode="popLayout">
                 {filteredSkills.map((skill, index) => (
                   <SkillCard key={skill.id} skill={skill} index={index} />
@@ -199,11 +266,18 @@ export default function MarketplaceClient({ initialSkills }: MarketplaceClientPr
             {/* 7. EMPTY STATES */}
             {filteredSkills.length === 0 && (
               <div className="py-48 text-center bg-zinc-900/30 border border-zinc-800 border-dashed rounded-[3rem] flex flex-col items-center">
+                <div className="w-20 h-20 bg-zinc-800 rounded-[2rem] flex items-center justify-center mb-8">
+                  {filters.searchQuery ? (
+                    <SearchX className="w-10 h-10 text-zinc-600" />
+                  ) : filters.activeCategory !== 'all' ? (
+                    <PackageOpen className="w-10 h-10 text-zinc-600" />
+                  ) : (
+                    <Package className="w-10 h-10 text-zinc-600" />
+                  )}
+                </div>
+                
                 {filters.searchQuery ? (
                   <>
-                    <div className="w-20 h-20 bg-zinc-800 rounded-[2rem] flex items-center justify-center mb-8">
-                      <SearchX className="w-10 h-10 text-zinc-600" />
-                    </div>
                     <h3 className="text-2xl font-semibold text-white mb-2 tracking-tight">No skills match '{filters.searchQuery}'</h3>
                     <p className="text-zinc-500 max-w-sm mb-8 leading-relaxed font-medium text-sm">Try a different keyword or browse all skills.</p>
                     <button 
@@ -213,37 +287,31 @@ export default function MarketplaceClient({ initialSkills }: MarketplaceClientPr
                       Clear search
                     </button>
                   </>
-                ) : filters.activeCategory !== 'all' ? (
+                ) : filters.activeCategory !== 'all' || activeComplianceFilter !== 'all' ? (
                   <>
-                    <div className="w-20 h-20 bg-zinc-800 rounded-[2rem] flex items-center justify-center mb-8">
-                      <PackageOpen className="w-10 h-10 text-zinc-600" />
-                    </div>
-                    <h3 className="text-2xl font-semibold text-white mb-2 tracking-tight">No {filters.activeCategory} skills yet</h3>
-                    <p className="text-zinc-500 max-w-sm mb-8 leading-relaxed font-medium text-sm">Be the first to publish one.</p>
+                    <h3 className="text-2xl font-semibold text-white mb-2 tracking-tight">No results found</h3>
+                    <p className="text-zinc-500 max-w-sm mb-8 leading-relaxed font-medium text-sm">Try adjusting your category or compliance filters.</p>
                     <div className="flex gap-6">
                       <button 
-                        onClick={() => updateFilter({ activeCategory: 'all' })}
+                        onClick={() => {
+                          updateFilter({ activeCategory: 'all' });
+                          setActiveComplianceFilter('all');
+                        }}
                         className="text-zinc-400 font-bold hover:text-white transition-colors uppercase text-[10px] tracking-widest"
                       >
-                        Browse all
+                        Reset filters
                       </button>
-                      <Link href="/publish" className="text-indigo-400 font-bold hover:text-white transition-colors uppercase text-[10px] tracking-widest flex items-center gap-1">
-                        Publish a skill <ArrowRight className="w-3 h-3" />
-                      </Link>
                     </div>
                   </>
                 ) : (
                   <>
-                    <div className="w-20 h-20 bg-zinc-800 rounded-[2rem] flex items-center justify-center mb-8">
-                      <SlidersHorizontal className="w-10 h-10 text-zinc-600" />
-                    </div>
-                    <h3 className="text-2xl font-semibold text-white mb-2 tracking-tight">No skills in this price range</h3>
-                    <p className="text-zinc-500 max-w-sm mb-8 leading-relaxed font-medium text-sm">Try adjusting the price slider.</p>
+                    <h3 className="text-2xl font-semibold text-white mb-2 tracking-tight">No skills found</h3>
+                    <p className="text-zinc-500 max-w-sm mb-8 leading-relaxed font-medium text-sm">Try adjusting your filters.</p>
                     <button 
-                      onClick={() => updateFilter({ priceRange: 800 })}
+                      onClick={() => updateFilter({ priceRange: 800, complianceOnly: false, providerAgnosticOnly: false, freeOnly: false })}
                       className="text-indigo-400 font-bold hover:text-white transition-colors uppercase text-[10px] tracking-widest"
                     >
-                      Reset price filter
+                      Reset all filters
                     </button>
                   </>
                 )}

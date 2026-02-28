@@ -10,7 +10,8 @@ export interface Filters {
   sortBy: string;
 }
 
-function normalizeStr(str: string): string {
+function normalizeStr(str: string | null | undefined): string {
+  if (!str) return '';
   return str
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -26,7 +27,7 @@ export function applyFilters(skills: Skill[], filters: Filters): Skill[] {
     if (normalizedQuery) {
       const nameMatch = normalizeStr(skill.name).includes(normalizedQuery);
       const descMatch = normalizeStr(skill.description).includes(normalizedQuery);
-      const tagMatch = skill.tags.some(tag => normalizeStr(tag).includes(normalizedQuery));
+      const tagMatch = (skill.tags || []).some(tag => normalizeStr(tag).includes(normalizedQuery));
       if (!nameMatch && !descMatch && !tagMatch) return false;
     }
 
@@ -39,6 +40,7 @@ export function applyFilters(skills: Skill[], filters: Filters): Skill[] {
     if (filters.complianceOnly && (!skill.compliance_labels || skill.compliance_labels.length === 0)) {
       return false;
     }
+
 
     // 4. Provider Agnostic Filter
     if (filters.providerAgnosticOnly && !skill.provider_switchable) {

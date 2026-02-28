@@ -4,6 +4,7 @@ export type Provider = 'openai' | 'gemini' | 'anthropic' | 'llama' | 'custom';
 export type Category = 'general' | 'security' | 'energy-industrial' | 'data-analytics' | 'automation' | 'compliance';
 export type ComplianceLabel = 'EU_AI_ACT' | 'US_FEDERAL' | 'GDPR' | 'SOC2' | 'ISO27001';
 export type ReviewStatus = 'in_review' | 'live' | 'rejected' | 'draft';
+export type PricingTier = 'community' | 'standard' | 'verified' | 'enterprise';
 
 export interface Compatibility {
   node: string;
@@ -31,7 +32,9 @@ export interface Skill {
   code_example: string;
   compatibility: Compatibility;
   updated_at: string;
+  current_version?: string;
   developer_id?: string;
+  pricing_tier: PricingTier;
   developers?: {
     users?: {
       full_name: string;
@@ -135,6 +138,7 @@ export const placeholderSkills: Skill[] = [
     price_cents: 19900,
     status: 'published',
     review_status: 'live',
+    pricing_tier: 'verified',
     registry_endpoint: '@helm-market/vuln-scanner',
     permissions: ['internet-access'],
     tags: ['security', 'nist', 'vulnerability'],
@@ -144,7 +148,7 @@ export const placeholderSkills: Skill[] = [
     compliance_labels: ['SOC2', 'ISO27001'],
     compatibility: defaultCompatibility,
     updated_at: new Date().toISOString(),
-    code_example: `import { createHelm } from '@bgub/helm'\nimport { vulnScanner } from '@helm-market/vuln-scanner'\n\nconst helm = createHelm({ skills: [vulnScanner] })\n\nconst result = await helm.run(\n  'Check CVE-2021-44228 severity and affected versions'\n)\nconsole.log(result)\n// → { id: "CVE-2021-44228", severity: "CRITICAL", \n//     score: 10, affectedVersions: [...] }`,
+    code_example: `import { createHelm } from '@bgub/helm'\nimport { vulnScanner } from '@helm-market/vuln-scanner'\n\nconst helm = createHelm({ skills: [vulnScanner] })\n\nconst result = await helm.run(\n  'Check CVE-2021-44228 severity and affected versions'\n)\nconsole.log(result)\n// → { id: \"CVE-2021-44228\", severity: \"CRITICAL\", \n//     score: 10, affectedVersions: [...] }`,
   },
   {
     id: 'sec-2',
@@ -154,6 +158,7 @@ export const placeholderSkills: Skill[] = [
     price_cents: 29900,
     status: 'published',
     review_status: 'live',
+    pricing_tier: 'verified',
     registry_endpoint: '@helm-market/zero-trust',
     permissions: ['read-files', 'internet-access'],
     tags: ['security', 'zero-trust', 'compliance'],
@@ -173,6 +178,7 @@ export const placeholderSkills: Skill[] = [
     price_cents: 9900,
     status: 'published',
     review_status: 'live',
+    pricing_tier: 'standard',
     registry_endpoint: '@helm-market/audit-trail',
     permissions: ['write-files'],
     tags: ['security', 'audit', 'logging'],
@@ -192,6 +198,7 @@ export const placeholderSkills: Skill[] = [
     price_cents: 49900,
     status: 'published',
     review_status: 'live',
+    pricing_tier: 'enterprise',
     registry_endpoint: '@helm-market/anomaly-detect',
     permissions: ['internet-access', 'execute-scripts'],
     tags: ['security', 'ai', 'network'],
@@ -213,6 +220,7 @@ export const placeholderSkills: Skill[] = [
     price_cents: 59900,
     status: 'published',
     review_status: 'live',
+    pricing_tier: 'enterprise',
     registry_endpoint: '@helm-market/eu-ai-audit',
     permissions: ['internet-access'],
     tags: ['compliance', 'eu', 'ai-act'],
@@ -232,6 +240,7 @@ export const placeholderSkills: Skill[] = [
     price_cents: 34900,
     status: 'published',
     review_status: 'live',
+    pricing_tier: 'verified',
     registry_endpoint: '@helm-market/gdpr-scan',
     permissions: ['read-files'],
     tags: ['compliance', 'gdpr', 'pii'],
@@ -251,6 +260,7 @@ export const placeholderSkills: Skill[] = [
     price_cents: 44900,
     status: 'published',
     review_status: 'live',
+    pricing_tier: 'enterprise',
     registry_endpoint: '@helm-market/us-fed-ai',
     permissions: ['internet-access'],
     tags: ['compliance', 'us-federal', 'policy'],
@@ -270,7 +280,8 @@ export const placeholderSkills: Skill[] = [
     price_cents: 14900,
     status: 'published',
     review_status: 'live',
-    registry_endpoint: '@helm-market/bias-check',
+    pricing_tier: 'standard',
+    registry_endpoint: '@helm-market/llm-bias-check',
     permissions: ['internet-access'],
     tags: ['compliance', 'bias', 'ethics'],
     category: 'compliance',
@@ -291,6 +302,7 @@ export const placeholderSkills: Skill[] = [
     price_cents: 79900,
     status: 'published',
     review_status: 'live',
+    pricing_tier: 'enterprise',
     registry_endpoint: '@helm-market/grid-opt',
     permissions: ['internet-access', 'execute-scripts'],
     tags: ['energy', 'grid', 'optimization'],
@@ -310,6 +322,7 @@ export const placeholderSkills: Skill[] = [
     price_cents: 29900,
     status: 'published',
     review_status: 'live',
+    pricing_tier: 'standard',
     registry_endpoint: '@helm-market/energy-forecast',
     permissions: ['internet-access'],
     tags: ['energy', 'forecast', 'ai'],
@@ -329,6 +342,7 @@ export const placeholderSkills: Skill[] = [
     price_cents: 19900,
     status: 'published',
     review_status: 'live',
+    pricing_tier: 'verified',
     registry_endpoint: '@helm-market/material-search',
     permissions: ['internet-access'],
     tags: ['industrial', 'science', 'research'],
@@ -348,6 +362,7 @@ export const placeholderSkills: Skill[] = [
     price_cents: 39900,
     status: 'published',
     review_status: 'live',
+    pricing_tier: 'enterprise',
     registry_endpoint: '@helm-market/sensor-pipeline',
     permissions: ['read-files', 'execute-scripts'],
     tags: ['industrial', 'iot', 'telemetry'],
@@ -369,6 +384,7 @@ export const placeholderSkills: Skill[] = [
     price_cents: 1900,
     status: 'published',
     review_status: 'live',
+    pricing_tier: 'community',
     registry_endpoint: '@helm-market/weather',
     permissions: ['internet-access'],
     tags: ['general', 'weather', 'api'],
@@ -388,6 +404,7 @@ export const placeholderSkills: Skill[] = [
     price_cents: 2900,
     status: 'published',
     review_status: 'live',
+    pricing_tier: 'community',
     registry_endpoint: '@helm-market/currency',
     permissions: ['internet-access'],
     tags: ['general', 'currency', 'finance'],

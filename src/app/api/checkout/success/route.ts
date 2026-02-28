@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     // 1. Get skill details
     const { data: skill, error: skillError } = await supabase
       .from('skills')
-      .select('name, registry_endpoint')
+      .select('name, registry_endpoint, developer_id')
       .eq('id', skillId)
       .single()
 
@@ -73,6 +73,28 @@ export async function GET(request: Request) {
         } else {
           throw new Error('Failed to create installation record')
         }
+      } else {
+        // Track new install event
+        await supabase.from('skill_events').insert({
+          skill_id: skillId,
+          user_id: userId,
+          event_type: 'install',
+          metadata: { source: 'checkout_success' }
+        }).catch(err => console.error("Failed to log install event:", err));
+
+        // Trigger webhook for publisher
+        const { createWebhookDelivery } = await import('@/lib/webhooks')
+        createWebhookDelivery(skill.developer_id, 'skill.purchased', {
+          skillId: skillId,
+          skillName: skill.name,
+          purchaserId: userId
+        }).catch(err => console.error("Webhook trigger purchased failed:", err))
+        
+        createWebhookDelivery(skill.developer_id, 'skill.installed', {
+          skillId: skillId,
+          skillName: skill.name,
+          purchaserId: userId
+        }).catch(err => console.error("Webhook trigger installed failed:", err))
       }
     }
 

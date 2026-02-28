@@ -18,6 +18,8 @@ export function SkillSubmissionForm() {
     price_cents: 0,
     registry_endpoint: '',
     config: '',
+    version: '',
+    changelog: '',
     permissions: [] as string[],
     tags: [] as string[],
     category: 'general',
@@ -115,6 +117,13 @@ export function SkillSubmissionForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Semver validation
+    if (!/^\d+\.\d+\.\d+$/.test(formData.version)) {
+      alert("Version must be in format 1.0.0");
+      return;
+    }
+
     setStatus('submitting')
     try {
       const response = await fetch('/api/skills', {
@@ -177,6 +186,27 @@ export function SkillSubmissionForm() {
               onChange={e => setFormData(prev => ({ ...prev, slug: e.target.value }))} 
               required 
               className="bg-zinc-900 border-zinc-800 h-14 rounded-2xl focus-visible:ring-indigo-500 font-mono text-sm"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">Version</label>
+            <Input 
+              placeholder="1.0.0" 
+              value={formData.version} 
+              onChange={e => setFormData(prev => ({ ...prev, version: e.target.value }))} 
+              required 
+              className="bg-zinc-900 border-zinc-800 h-14 rounded-2xl focus-visible:ring-indigo-500 font-mono text-sm"
+            />
+          </div>
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">Changelog</label>
+            <Input 
+              placeholder="What changed in this version?" 
+              value={formData.changelog} 
+              onChange={e => setFormData(prev => ({ ...prev, changelog: e.target.value }))} 
+              className="bg-zinc-900 border-zinc-800 h-14 rounded-2xl focus-visible:ring-indigo-500 text-sm"
             />
           </div>
         </div>

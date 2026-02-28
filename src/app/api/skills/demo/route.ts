@@ -1,83 +1,99 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/utils/supabase/server'
 
-// Simple in-memory rate limiting map
-const rateLimit = new Map<string, { count: number, lastReset: number }>()
+export async function POST(req: Request) {
+  try {
+    const { slug, prompt } = await req.json()
+    if (!slug || !prompt) {
+      return NextResponse.json({ error: 'Missing slug or prompt' }, { status: 400 })
+    }
 
-const MOCK_RESPONSES: Record<string, any> = {
-  'vuln-scanner': {
-    findings: [
-      { id: "CVE-2021-44228", severity: "CRITICAL", score: 10, package: "log4j-core", fixVersion: "2.15.0" }
-    ],
-    summary: "1 critical vulnerability detected in production environment."
-  },
-  'llm-bias-check': {
-    hasBias: true,
-    findings: [
-      { type: "AGE_DISCRIMINATION", confidence: 0.98, snippet: "...energetic young professionals..." }
-    ],
-    suggestion: "Neutralize language: replace with 'results-oriented professionals'."
-  },
-  'pii-scanner': {
-    hasPii: true,
-    redacted: "Contact me at ******************** or call ***************",
-    types: ["EMAIL", "PHONE_EU"]
-  },
-  'currency': {
-    from: "USD",
-    to: "EUR",
-    amount: 1000,
-    result: 923.40,
-    rate: 0.9234,
-    date: "2024-03-20"
-  },
-  'weather': {
-    city: "Berlin",
-    temp: 14.9,
-    description: "Overcast",
-    windSpeed: "12km/h",
-    humidity: "65%"
-  },
-  'grid-optimizer': {
-    efficiency_gain: "+14.2%",
-    recommendation: "Shift 20MW load from Sector 7G to storage battery cluster B.",
-    status: "OPTIMIZED"
-  }
-}
+    const supabase = await createClient(true)
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const slug = searchParams.get('slug')
-  const prompt = searchParams.get('prompt')
-  
-  const ip = request.headers.get('x-forwarded-for') || 'anonymous'
-  
-  // Rate limiting logic
-  const now = Date.now()
-  const userLimit = rateLimit.get(ip) || { count: 0, lastReset: now }
-  
-  if (now - userLimit.lastReset > 3600000) { // 1 hour reset
-    userLimit.count = 0
-    userLimit.lastReset = now
-  }
-  
-  if (userLimit.count >= 3) {
-    return NextResponse.json({ error: "Rate limit exceeded. Please try again in an hour." }, { status: 429 })
-  }
-  
-  userLimit.count++
-  rateLimit.set(ip, userLimit)
+    // Lookup skill
+    const { data: skill } = await supabase.from('skills').select('id, slug').eq('slug', slug).single()
+    if (!skill) {
+      return NextResponse.json({ error: 'Skill not found' }, { status: 404 })
+    }
 
-  if (!slug || !MOCK_RESPONSES[slug]) {
-    return NextResponse.json({ 
-      output: "Agent processed prompt successfully. Logic verified by Helm kernel." 
+    // Rate limiting: 3 free demos per hour per IP
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('remote-addr') || 'unknown'
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+
+    const { count } = await supabase
+      .from('skill_events')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_type', 'execute')
+      .eq('metadata->>ip', ip)
+      .eq('metadata->>demo', 'true')
+      .gte('created_at', oneHourAgo)
+
+    if (count !== null && count >= 3) {
+      return NextResponse.json({ 
+        error: "rate_limited", 
+        message: "3 free demos per hour. Sign up for unlimited." 
+      }, { status: 429 })
+    }
+
+    // Log execute event
+    await supabase.from('skill_events').insert({
+      skill_id: skill.id,
+      event_type: 'execute',
+      metadata: { ip, demo: 'true', prompt }
     })
+
+    // Simulate execution time
+    const executionMs = Math.floor(Math.random() * 600) + 200;
+    await new Promise(r => setTimeout(r, executionMs));
+
+    const pLower = prompt.toLowerCase()
+    let responseData: any = { message: "Execution completed successfully.", _meta: { executionMs, model: "helm-sandbox-v1", cached: false } }
+
+    if (slug === 'vuln-scanner' || pLower.includes('log4j') || pLower.includes('cve')) {
+      responseData = {
+        id: pLower.match(/cve-\d{4}-\d+/)?.[0]?.toUpperCase() || "CVE-2021-44228",
+        description: "Apache Log4j2 JNDI features do not protect against attacker controlled LDAP and other JNDI related endpoints.",
+        severity: "CRITICAL",
+        cvssScore: 10.0,
+        affectedVersions: ["2.0-beta9 to 2.14.1"],
+        patch: "Upgrade to 2.15.0 or later",
+        _meta: { executionMs, model: "helm-sandbox-v1", cached: false }
+      }
+    } else if (slug === 'pii-scanner' || pLower.includes('email') || pLower.includes('@')) {
+      responseData = {
+        hasPii: true,
+        riskLevel: "high",
+        findings: [{ type: "EMAIL", value: "[REDACTED]", gdprRelevant: true }],
+        redacted: prompt.replace(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi, "[REDACTED]"),
+        _meta: { executionMs, model: "helm-sandbox-v1", cached: false }
+      }
+    } else if (slug === 'currency' || pLower.includes('usd') || pLower.includes('eur')) {
+      responseData = {
+        from: "USD",
+        to: "EUR",
+        result: 0.92,
+        rate: 0.9234,
+        _meta: { executionMs, model: "helm-sandbox-v1", cached: false }
+      }
+    } else if (slug === 'weather' || pLower.includes('weather')) {
+      responseData = {
+        city: pLower.match(/in ([a-z]+)/)?.[1]?.toUpperCase() || "BERLIN",
+        temp: 14.9,
+        description: "Overcast",
+        _meta: { executionMs, model: "helm-sandbox-v1", cached: false }
+      }
+    } else {
+      // generic
+      responseData = {
+        success: true,
+        summary: `Processed prompt: "${prompt.substring(0, 30)}..."`,
+        _meta: { executionMs, model: "helm-sandbox-v1", cached: false }
+      }
+    }
+
+    return NextResponse.json(responseData)
+  } catch (err: any) {
+    console.error('Demo API Error:', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
-
-  // Small delay to simulate "AI processing"
-  await new Promise(resolve => setTimeout(resolve, 800))
-
-  return NextResponse.json({
-    prompt,
-    output: MOCK_RESPONSES[slug]
-  })
 }
