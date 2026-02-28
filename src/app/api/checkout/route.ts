@@ -9,6 +9,8 @@ export async function POST(request: Request) {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { skillId } = await request.json()
+    console.log("Looking up skill ID for checkout:", skillId)
+    
     if (!skillId) return NextResponse.json({ error: 'Missing skillId' }, { status: 400 })
 
     const supabase = await createClient()
@@ -18,7 +20,10 @@ export async function POST(request: Request) {
       .eq('id', skillId)
       .single()
 
-    if (error || !skill) return NextResponse.json({ error: 'Skill not found' }, { status: 404 })
+    if (error || !skill) {
+      console.error("Skill not found in Supabase during checkout. ID:", skillId, error)
+      return NextResponse.json({ error: 'skill_not_found' }, { status: 404 })
+    }
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -46,6 +51,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url: session.url })
   } catch (err: any) {
+    console.error("Checkout Global Error:", err)
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }

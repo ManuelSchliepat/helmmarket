@@ -5,19 +5,24 @@ import { Card, CardContent } from '@/components/ui/card'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { SkillDetailClient } from '@/components/skills/SkillDetailClient'
-import { ChevronLeft, ShieldCheck, Loader2 } from 'lucide-react'
+import { ChevronLeft, ShieldCheck } from 'lucide-react'
 import { placeholderSkills } from '@/lib/placeholder-data'
 import { CheckoutButton } from '@/components/checkout/CheckoutButton'
 
 export default async function SkillDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   
-  // Try to find in placeholder data first
-  let skill = placeholderSkills.find(s => s.slug === slug)
+  // 1. Fetch from Supabase FIRST (Real UUID needed for Checkout)
+  let skill = null;
+  try {
+    skill = await getSkillBySlug(slug)
+  } catch (e) {
+    console.warn(`Skill with slug ${slug} not found in Supabase, checking placeholders...`)
+  }
+  
+  // 2. Fallback to placeholder data for UI/demo purposes if DB is empty
   if (!skill) {
-    try {
-      skill = await getSkillBySlug(slug)
-    } catch (e) {}
+    skill = placeholderSkills.find(s => s.slug === slug)
   }
 
   if (!skill) notFound()
@@ -80,11 +85,11 @@ export default async function SkillDetailPage({ params }: { params: Promise<{ sl
             </div>
           </Card>
 
-          {skill.compliance_labels.length > 0 && (
+          {skill.compliance_labels && skill.compliance_labels.length > 0 && (
             <div className="p-10 bg-zinc-900 border border-zinc-800 rounded-3xl">
               <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-10">Compliance</h3>
               <div className="flex flex-col gap-6">
-                {skill.compliance_labels.map(label => (
+                {skill.compliance_labels.map((label: string) => (
                   <div key={label} className="flex items-center gap-4 text-zinc-300 text-xs font-bold uppercase tracking-widest">
                     <ShieldCheck className="w-5 h-5 text-indigo-500" />
                     {label.replace(/_/g, ' ')}
