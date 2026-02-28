@@ -33,6 +33,11 @@ export default function MarketplaceClient({ initialSkills }: MarketplaceClientPr
   const filteredSkills = useMemo(() => applyFilters(initialSkills, filters), [initialSkills, filters]);
   const categoryCounts = useMemo(() => computeCategoryCounts(initialSkills, filters), [initialSkills, filters]);
 
+  // Reset scroll when category changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [filters.activeCategory]);
+
   const updateFilter = (updates: Partial<Filters>) => {
     setFilters(prev => ({ ...prev, ...updates }));
   };
