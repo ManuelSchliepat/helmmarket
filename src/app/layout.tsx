@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { CookieBanner } from "@/components/layout/CookieBanner";
 import { MobileNav } from "@/components/layout/MobileNav";
+import { I18nProvider } from "@/lib/i18n-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,14 +33,16 @@ export default function RootLayout({
   return (
     <ClerkProvider publishableKey={clerkKey}>
       <html lang="en" className="dark">
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#09090b] text-gray-100 min-h-screen flex flex-col pb-16 md:pb-0`}>
-          <Header />
-          <div className="flex-1">
-            {children}
-          </div>
-          <Footer />
-          <MobileNav />
-          <CookieBanner />
+        <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#0a0a0a] text-zinc-400 selection-indigo min-h-screen flex flex-col pb-16 md:pb-0`}>
+          <I18nProvider>
+            <Header />
+            <div className="flex-1">
+              {children}
+            </div>
+            <Footer />
+            <MobileNav />
+            <CookieBanner />
+          </I18nProvider>
         </body>
       </html>
     </ClerkProvider>

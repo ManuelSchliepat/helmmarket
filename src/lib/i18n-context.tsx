@@ -11,16 +11,46 @@ interface I18nContextType {
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
-export function I18nProvider({ children, initialLanguage = 'en' }: { children: React.ReactNode, initialLanguage?: Language }) {
+export function I18nProvider({ 
+  children, 
+  initialLanguage = 'en' 
+}: { 
+  children: React.ReactNode, 
+  initialLanguage?: Language 
+}) {
   const [language, setLanguage] = useState<Language>(initialLanguage);
 
+  useEffect(() => {
+    // 1. Check localStorage
+    const savedLang = localStorage.getItem('helm-language') as Language;
+    if (savedLang && (savedLang === 'en' || savedLang === 'de')) {
+      setLanguage(savedLang);
+      return;
+    }
+
+    // 2. Check browser language
+    const browserLang = navigator.language.split('-')[0] as Language;
+    if (browserLang === 'de') {
+      setLanguage('de');
+    }
+  }, []);
+
+  const handleSetLanguage = (lang: Language) => {
+    setLanguage(lang);
+    localStorage.setItem('helm-language', lang);
+    // Optionally sync with DB if needed, but the settings page handles that via API
+  };
+
   const t = (key: keyof typeof translations['en']) => {
-    return translations[language][key] || translations['en'][key];
+    const translationSet = translations[language] || translations['en'];
+    return translationSet[key] || translations['en'][key] || key;
   };
 
   return (
-    <I18nContext.Provider value={{ language, setLanguage, t }}>
-      {children}
+    <I18nContext.Provider value={{ language, setLanguage: handleSetLanguage, t }}>
+      <div className={language === 'de' ? 'lang-de' : 'lang-en'}>
+        {children}
+      </div>
     </I18nContext.Provider>
   );
 }

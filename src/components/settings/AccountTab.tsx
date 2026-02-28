@@ -5,6 +5,7 @@ import { useI18n } from '@/lib/i18n-context'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Loader2, CheckCircle2 } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 export function AccountTab({ user }: { user: any }) {
   const { t, language, setLanguage } = useI18n()
@@ -82,20 +83,17 @@ export function AccountTab({ user }: { user: any }) {
         <div className="space-y-4">
           <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{t('language')}</label>
           <div className="flex gap-2">
-            {[
-              { id: 'en', label: t('english') },
-              { id: 'de', label: t('german') }
-            ].map(lang => (
+            {(['en', 'de'] as const).map(langId => (
               <button
-                key={lang.id}
-                onClick={() => handleSave('preferred_language', lang.id as any)}
+                key={langId}
+                onClick={() => handleSave('preferred_language', langId)}
                 className={`px-6 py-2 rounded-full text-sm font-medium border transition-all ${
-                  language === lang.id 
+                  language === langId 
                     ? 'bg-white border-white text-black' 
                     : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-600'
                 }`}
               >
-                {lang.label}
+                {langId === 'en' ? t('english') : t('german')}
               </button>
             ))}
           </div>
@@ -104,5 +102,3 @@ export function AccountTab({ user }: { user: any }) {
     </div>
   )
 }
-
-import { motion } from 'framer-motion'

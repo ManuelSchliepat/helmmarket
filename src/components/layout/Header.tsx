@@ -4,8 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n-context";
 
 export function Header() {
+  const { t } = useI18n();
+
   return (
     <header className="fixed top-0 left-0 right-0 z-[100] h-16 border-b border-zinc-800/50 bg-black/50 backdrop-blur-xl">
       <div className="container px-6 mx-auto h-full flex items-center justify-between">
@@ -22,13 +25,13 @@ export function Header() {
         
         <nav className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
           <Link className="text-sm font-medium text-zinc-400 hover:text-white transition-colors" href="/skills">
-            Marketplace
+            {t('marketplace')}
           </Link>
           <Link className="text-sm font-medium text-zinc-400 hover:text-white transition-colors" href="/onboarding">
-            Developers
+            {t('developers')}
           </Link>
           <Link className="text-sm font-medium text-zinc-400 hover:text-white transition-colors" href="/docs/quickstart">
-            Docs
+            {t('docs')}
           </Link>
         </nav>
 
@@ -36,16 +39,16 @@ export function Header() {
           <SignedOut>
             <SignInButton mode="modal">
               <Button size="sm" className="bg-white text-black hover:bg-zinc-200 h-9 px-4 rounded-full font-medium text-sm transition-all active:scale-95">
-                Sign In
+                {t('signIn')}
               </Button>
             </SignInButton>
           </SignedOut>
           <SignedIn>
             <Link href="/settings" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors mr-2">
-              Settings
+              {t('settings')}
             </Link>
             <Link href="/dashboard" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors mr-2">
-              Console
+              {t('console')}
             </Link>
             <UserButton 
               afterSignOutUrl="/" 

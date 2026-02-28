@@ -1,11 +1,16 @@
+'use client'
+
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n-context";
 
 export function Footer() {
+  const { t } = useI18n();
+
   const links = [
-    { label: 'Marketplace', href: '/skills' },
-    { label: 'Publish', href: '/onboarding' },
-    { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Docs', href: '#' },
+    { label: t('marketplace'), href: '/skills' },
+    { label: t('developers'), href: '/onboarding' },
+    { label: t('console'), href: '/dashboard' },
+    { label: t('docs'), href: '/docs/quickstart' },
     { label: 'Twitter', href: '#' },
     { label: 'GitHub', href: '#' }
   ]
@@ -22,7 +27,7 @@ export function Footer() {
               <span className="font-semibold text-white tracking-tight">Helm Market</span>
             </div>
             <p className="text-sm leading-relaxed">
-              The capabilites infrastructure for autonomous agents. Built on open standards.
+              {t('footerSub')}
             </p>
           </div>
 
@@ -40,10 +45,10 @@ export function Footer() {
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-              Operational
+              {t('operational')}
             </div>
-            <Link href="#" className="hover:text-zinc-400 transition-colors">Privacy</Link>
-            <Link href="#" className="hover:text-zinc-400 transition-colors">Terms</Link>
+            <Link href="#" className="hover:text-zinc-400 transition-colors">{t('privacy')}</Link>
+            <Link href="#" className="hover:text-zinc-400 transition-colors">{t('terms')}</Link>
           </div>
         </div>
       </div>

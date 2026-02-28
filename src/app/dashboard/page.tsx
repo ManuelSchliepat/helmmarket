@@ -1,35 +1,37 @@
-import { auth } from '@clerk/nextjs/server'
-import { redirect } from 'next/navigation'
+'use client'
+
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { getDeveloper } from '@/services/supabase/skills'
-import { LayoutDashboard, Package, BarChart3, CreditCard, Settings, CheckCircle2, Circle, ArrowRight, ShieldCheck, Star } from 'lucide-react'
+import { LayoutDashboard, Package, BarChart3, CreditCard, Settings, CheckCircle2, Circle, ArrowRight, Star } from 'lucide-react'
 import { placeholderSkills } from '@/lib/placeholder-data'
+import { useI18n } from '@/lib/i18n-context'
 
-export default async function DashboardPage({ 
+export default function DashboardPage({ 
   searchParams 
 }: { 
   searchParams: Promise<{ submitted?: string }> 
 }) {
-  const { userId } = await auth()
-  const params = await searchParams
-  
-  if (!userId) redirect('/onboarding')
+  const { t } = useI18n()
+  const [submitted, setSubmitted] = useState(false)
 
-  const developer = await getDeveloper(userId)
-  if (!developer?.stripe_account_id) redirect('/onboarding')
+  useEffect(() => {
+    searchParams.then(p => {
+      if (p.submitted === 'true') setSubmitted(true)
+    })
+  }, [searchParams])
 
   // Hardcoded selection for demo populated state
   const mySkills = placeholderSkills.slice(0, 2);
 
   return (
     <div className="container mx-auto py-32 px-6 flex flex-col lg:flex-row gap-16 relative">
-      {params.submitted === 'true' && (
+      {submitted && (
         <div className="absolute top-12 left-6 right-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-3 text-emerald-500 z-10 animate-in fade-in slide-in-from-top-4 duration-500">
           <CheckCircle2 className="w-5 h-5" />
           <p className="text-sm font-bold uppercase tracking-widest">
-            Your skill has been submitted and is pending review. You'll be notified when it goes live.
+            {t('saved')} — Your skill has been submitted and is pending review.
           </p>
         </div>
       )}
@@ -38,11 +40,11 @@ export default async function DashboardPage({
       <aside className="w-full lg:w-64 shrink-0">
         <nav className="space-y-2 lg:sticky lg:top-32">
           {[
-            { label: 'Overview', icon: LayoutDashboard, active: true },
-            { label: 'My Skills', icon: Package },
+            { label: t('account'), icon: LayoutDashboard, active: true },
+            { label: t('mySkills'), icon: Package },
             { label: 'Analytics', icon: BarChart3 },
-            { label: 'Earnings', icon: CreditCard },
-            { label: 'Settings', icon: Settings }
+            { label: t('billing'), icon: CreditCard },
+            { label: t('settings'), icon: Settings }
           ].map((item) => (
             <Link 
               key={item.label} 
@@ -62,21 +64,21 @@ export default async function DashboardPage({
       <main className="flex-1 space-y-16">
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-8">
           <div>
-            <h1 className="text-3xl font-semibold text-white tracking-tight mb-2">Developer Console</h1>
-            <p className="text-zinc-500 font-medium">Manage your skills and track performance.</p>
+            <h1 className="text-3xl font-semibold text-white tracking-tight mb-2">{t('devConsole')}</h1>
+            <p className="text-zinc-500 font-medium">{t('manageSkills')}</p>
           </div>
           <Button asChild className="h-10 px-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-medium shadow-lg shadow-indigo-600/20">
-            <Link href="/publish">Publish Skill</Link>
+            <Link href="/publish">{t('submitNew')}</Link>
           </Button>
         </header>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
-            { label: 'Total Earnings', val: '€1,240.00' },
-            { label: 'Active Installs', val: '84' },
-            { label: 'Avg Rating', val: '4.9' },
-            { label: 'Skills Live', val: '2' }
+            { label: t('revenue'), val: '€1,240.00' },
+            { label: t('activeInstalls'), val: '84' },
+            { label: t('avgRating'), val: '4.9' },
+            { label: t('skillsLive'), val: '2' }
           ].map((stat) => (
             <Card key={stat.label} className="bg-zinc-900 border-zinc-800 rounded-2xl p-6 shadow-none">
               <p className="text-xs font-medium text-zinc-500 uppercase tracking-widest mb-4">{stat.label}</p>
@@ -90,7 +92,7 @@ export default async function DashboardPage({
           <div className="lg:col-span-2 space-y-12">
             {/* Checklist */}
             <div className="p-8 bg-zinc-900 border border-zinc-800 rounded-3xl relative overflow-hidden">
-              <h2 className="text-xl font-medium text-white mb-8">Launch Checklist</h2>
+              <h2 className="text-xl font-medium text-white mb-8">{t('launchChecklist')}</h2>
               <div className="space-y-6">
                 {[
                   { label: 'Developer account created', done: true },
@@ -114,7 +116,7 @@ export default async function DashboardPage({
 
             {/* My Skills List */}
             <div className="space-y-6">
-              <h2 className="text-xl font-medium text-white px-1">Your Published Skills</h2>
+              <h2 className="text-xl font-medium text-white px-1">{t('mySkills')}</h2>
               <div className="grid gap-4">
                 {mySkills.map((skill) => (
                   <Link key={skill.id} href={`/skills/${skill.slug}`} className="group">
@@ -142,21 +144,21 @@ export default async function DashboardPage({
 
           {/* Sidebar Info */}
           <aside className="p-8 bg-zinc-900 border border-zinc-800 rounded-3xl space-y-8 h-fit lg:sticky lg:top-32">
-            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Payouts</h3>
+            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">{t('payouts')}</h3>
             <div className="flex items-center justify-between p-4 bg-black/20 rounded-xl border border-zinc-800">
               <div className="text-xs font-medium text-white">Stripe Connect</div>
-              <div className="text-[10px] font-bold text-emerald-500 uppercase px-2 py-0.5 bg-emerald-500/10 rounded-md">Active</div>
+              <div className="text-[10px] font-bold text-emerald-500 uppercase px-2 py-0.5 bg-emerald-500/10 rounded-md">{t('connected')}</div>
             </div>
             <p className="text-xs text-zinc-500 leading-relaxed font-medium">
-              Funds clear in 2-3 days and are paid out automatically every Monday to your linked bank account.
+              {t('payoutSub')}
             </p>
             <div className="pt-4 border-t border-zinc-800">
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-zinc-500">Pending</span>
+                <span className="text-zinc-500">{t('pending')}</span>
                 <span className="text-white font-medium">€142.00</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-zinc-500">Available</span>
+                <span className="text-zinc-500">{t('available')}</span>
                 <span className="text-white font-medium">€0.00</span>
               </div>
             </div>

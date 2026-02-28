@@ -5,9 +5,11 @@ import { SkillCard } from '@/components/skills/SkillCard'
 import { Input } from '@/components/ui/input'
 import { categoryFilters, placeholderSkills } from '@/lib/placeholder-data'
 import { Search, ShieldCheck } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
+import { useI18n } from '@/lib/i18n-context'
 
 export default function SkillsPage() {
+  const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
   const [complianceOnly, setComplianceOnly] = useState(false)
@@ -29,10 +31,9 @@ export default function SkillsPage() {
         
         {/* Header */}
         <div className="max-w-2xl">
-          <h1 className="text-4xl md:text-6xl font-semibold text-white mb-8 tracking-tight">Marketplace</h1>
+          <h1 className="text-4xl md:text-6xl font-semibold text-white mb-8 tracking-tight">{t('marketplace')}</h1>
           <p className="text-zinc-400 text-lg md:text-xl leading-relaxed">
-            Discover verified skills to extend your autonomous agents. 
-            Typed, sandboxed, and production-ready.
+            {t('verifiedSub')}
           </p>
         </div>
 
@@ -42,7 +43,7 @@ export default function SkillsPage() {
             <div className="relative group w-full md:w-[400px]">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-white transition-colors" />
               <Input 
-                placeholder="Search premium skills..." 
+                placeholder={t('searchPlaceholder')} 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-12 bg-zinc-900 border-zinc-800 h-14 rounded-2xl focus-visible:ring-indigo-500 text-base"
@@ -58,7 +59,7 @@ export default function SkillsPage() {
               }`}
             >
               <ShieldCheck className="w-4 h-4" />
-              Compliance Ready
+              {t('complianceReady')}
             </button>
           </div>
 
@@ -90,7 +91,7 @@ export default function SkillsPage() {
 
         {filteredSkills.length === 0 && (
           <div className="py-48 text-center bg-zinc-900/30 border border-zinc-800 border-dashed rounded-[3rem]">
-            <p className="text-zinc-500 font-medium">No skills matching your criteria.</p>
+            <p className="text-zinc-500 font-medium">{t('noResults')}</p>
           </div>
         )}
       </div>
