@@ -41,6 +41,9 @@ export function Header() {
             </SignInButton>
           </SignedOut>
           <SignedIn>
+            <Link href="/settings" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors mr-2">
+              Settings
+            </Link>
             <Link href="/dashboard" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors mr-2">
               Console
             </Link>
