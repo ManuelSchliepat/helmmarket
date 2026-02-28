@@ -1,0 +1,19 @@
+schema: spec-driven
+
+# Project context
+# This is shown to AI when creating artifacts.
+context: |
+  Helm Market is a marketplace for Helm AI Agent Skills.
+  Tech Stack: Next.js 14, TypeScript, Tailwind CSS, Shadcn UI, Supabase (Postgres), Stripe Connect, Clerk Auth, Verdaccio.
+  Core Features: Skill listings, Developer onboarding, 70/30 revenue share, Permission declaration display, Waitlist.
+  Refer to openspec/project.md for detailed project definitions.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
