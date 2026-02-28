@@ -1,15 +1,26 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@/utils/supabase/server';
-import { sendDeveloperRevenue } from '@/lib/email'; // Reusing for general dev emails or create new ones
 import { Resend } from 'resend';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const getAnthropic = () => {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+  return new Anthropic({ apiKey });
+}
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const getResend = () => {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+  return new Resend(apiKey);
+}
 
 export async function runHelmManagerAgent() {
+  const anthropic = getAnthropic();
+  const resend = getResend();
+
+  if (!anthropic) throw new Error('ANTHROPIC_API_KEY is not set');
+  if (!resend) throw new Error('RESEND_API_KEY is not set');
+
   const supabase = await createClient(true); // Service role
 
   const systemPrompt = `You are the Helm Market operations manager. 
@@ -251,8 +262,7 @@ Use the provided tools to interact with the marketplace.`;
               from: 'Helm Manager Agent <agent@helmmarket.com>',
               to: 'manuelschliepat@gmail.com',
               subject: `Daily Helm Market Summary - ${new Date().toLocaleDateString()}`,
-              html: `<div style="font-family: sans-serif;">${content.replace(/
-/g, '<br>')}</div>`
+              html: `<div style="font-family: sans-serif;">${content.replace(/\n/g, '<br>')}</div>`
             });
             result = { success: true };
             break;

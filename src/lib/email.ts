@@ -1,8 +1,18 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const getResend = () => {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn('RESEND_API_KEY is not set');
+    return null;
+  }
+  return new Resend(apiKey);
+}
 
 export async function sendPurchaseConfirmation(to: string, skillName: string, installCommand: string) {
+  const resend = getResend();
+  if (!resend) return;
+
   try {
     await resend.emails.send({
       from: 'Helm Market <deliveries@helmmarket.com>',
@@ -26,6 +36,9 @@ export async function sendPurchaseConfirmation(to: string, skillName: string, in
 }
 
 export async function sendDeveloperRevenueAlert(to: string, skillName: string, amountEuros: string) {
+  const resend = getResend();
+  if (!resend) return;
+
   try {
     await resend.emails.send({
       from: 'Helm Market <payouts@helmmarket.com>',
