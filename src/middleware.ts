@@ -1,6 +1,14 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const isPublicRoute = createRouteMatcher(['/', '/sign-in(.*)', '/sign-up(.*)', '/skills(.*)', '/waitlist(.*)'])
+const isPublicRoute = createRouteMatcher([
+  '/', 
+  '/sign-in(.*)', 
+  '/sign-up(.*)', 
+  '/skills(.*)', 
+  '/waitlist(.*)', 
+  '/api/mcp/(.*)/manifest', // Explicitly public
+  '/api/mcp/(.*)/execute',  // Public from Clerk's perspective, but manually protected by install_token in route.ts
+])
 
 export default clerkMiddleware(async (auth, request) => {
   if (!isPublicRoute(request)) {

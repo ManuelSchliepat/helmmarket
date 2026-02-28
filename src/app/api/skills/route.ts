@@ -1,4 +1,5 @@
 import { auth } from '@clerk/nextjs/server'
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 
@@ -25,9 +26,20 @@ export async function POST(request: Request) {
   try {
     const skillData = await request.json()
     
-    // Auto-assign developer_id
+    // Parse and validate config if provided
+    let parsedConfig = {}
+    if (skillData.config) {
+      try {
+        parsedConfig = JSON.parse(skillData.config)
+      } catch (e) {
+        return NextResponse.json({ error: 'Invalid JSON in helm.config.json' }, { status: 400 })
+      }
+    }
+
+    // Auto-assign developer_id and update config
     const finalSkillData = {
       ...skillData,
+      config: parsedConfig,
       developer_id: userId,
       status: 'pending_review'
     }

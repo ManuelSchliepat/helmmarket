@@ -1,4 +1,5 @@
 import { auth } from '@clerk/nextjs/server'
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@/utils/supabase/server'
@@ -33,6 +34,11 @@ export async function POST() {
       try {
         const account = await stripe.accounts.create({
           type: 'standard',
+          business_type: 'individual',
+          capabilities: {
+            card_payments: { requested: true },
+            transfers: { requested: true },
+          },
         })
         stripeAccountId = account.id
       } catch (stripeErr: any) {
@@ -54,10 +60,14 @@ export async function POST() {
 
     // 2. Create account link
     console.log('Creating Stripe Account Link for:', stripeAccountId)
+    
+    // Use the custom domain if available, otherwise fallback to env
+    const baseUrl = 'https://helmmarket.com'
+    
     const accountLink = await stripe.accountLinks.create({
       account: stripeAccountId,
-      refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/onboarding?refresh=true`,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/onboarding/success`,
+      refresh_url: `${baseUrl}/onboarding?refresh=true`,
+      return_url: `${baseUrl}/onboarding/success`,
       type: 'account_onboarding',
     })
 

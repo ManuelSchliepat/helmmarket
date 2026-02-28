@@ -17,7 +17,6 @@ export default function OnboardingPage() {
         const errorText = await response.text()
         console.error('Onboarding API failed:', errorText)
         
-        // Versuche die Fehlermeldung aus dem JSON zu extrahieren, falls vorhanden
         let message = 'Onboarding failed.'
         try {
           const errorJson = JSON.parse(errorText)
@@ -42,21 +41,25 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen py-12 px-4 text-center">
-      <h1 className="text-4xl font-bold mb-4">Start Selling AI Agent Skills</h1>
-      <p className="text-xl text-gray-500 mb-8 max-w-2xl">
-        Join our developer community, publish your skills, and keep 70% of every sale.
-        We handle the payments and distribution.
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-16rem)] py-12 px-4 text-center">
+      <div className="bg-indigo-500/10 text-indigo-400 text-sm font-medium px-4 py-1.5 rounded-full mb-6 border border-indigo-500/20">
+        Developer Platform
+      </div>
+      <h1 className="text-4xl md:text-5xl font-extrabold mb-6 tracking-tight text-white">Simple pricing. Developers keep 70%.</h1>
+      <p className="text-xl text-gray-400 mb-10 max-w-2xl leading-relaxed">
+        Join 2,400+ developers publishing to the standard App Store for AI Agent Skills. 
+        We handle distribution, sandboxing, and payments so you can focus on writing great code.
       </p>
       {isSignedIn ? (
-        <Button size="lg" onClick={handleConnectStripe} disabled={loading}>
-          {loading ? 'Connecting...' : 'Connect with Stripe'}
+        <Button size="lg" onClick={handleConnectStripe} disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 h-12 px-8 text-base">
+          {loading ? 'Connecting...' : 'Connect Stripe & Start Earning'}
         </Button>
       ) : (
-        <div className="space-y-4">
-          <p className="text-red-500 font-medium">Please sign in to your developer account first.</p>
+        <div className="space-y-6">
           <SignInButton mode="modal">
-            <Button size="lg">Sign In to Continue</Button>
+            <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 h-12 px-8 text-base">
+              Start earning. Publish your first skill free.
+            </Button>
           </SignInButton>
         </div>
       )}

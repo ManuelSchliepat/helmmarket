@@ -13,6 +13,7 @@ export function SkillSubmissionForm() {
     description: '',
     price_cents: 0,
     registry_endpoint: '',
+    config: '',
     permissions: [] as string[],
     tags: [] as string[]
   })
@@ -129,6 +130,16 @@ export function SkillSubmissionForm() {
           onChange={e => setFormData(prev => ({ ...prev, registry_endpoint: e.target.value }))} 
           required 
         />
+        <div className="space-y-2">
+          <label className="text-sm font-medium">helm.config.json (Optional, required for MCP)</label>
+          <textarea 
+            placeholder='{ "name": "my-skill", "operations": [...] }' 
+            className="flex min-h-[150px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+            value={formData.config}
+            onChange={e => setFormData(prev => ({ ...prev, config: e.target.value }))}
+          />
+          <p className="text-xs text-gray-500">Provide your skill configuration to enable automatic MCP tool generation.</p>
+        </div>
         <Input 
           placeholder="Add tags (press Enter)" 
           value={currentTag} 
