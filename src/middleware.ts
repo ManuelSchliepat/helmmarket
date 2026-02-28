@@ -7,7 +7,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/v1(.*)', 
   '/api/checkout', // Step 1: Make checkout API public for agent purchases
   '/onboarding',
-  '/docs/(.*)'
+  '/docs/(.*)',
+  '/blog/(.*)' // Step 2: Make blog public
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
