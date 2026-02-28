@@ -45,12 +45,30 @@ export function SkillSubmissionForm() {
   const availableCompliance = ['EU_AI_ACT', 'US_FEDERAL', 'GDPR', 'SOC2', 'ISO27001']
 
   const handleToggle = (field: 'permissions' | 'providers' | 'compliance_labels', value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: prev[field].includes(value) 
-        ? prev[field].filter(v => v !== value) 
-        : [...prev[field], value]
-    }))
+    setFormData(prev => {
+      if (field === 'providers' && !prev.provider_switchable) {
+        // If not switchable, it's a single select
+        return { ...prev, [field]: [value] }
+      }
+      return {
+        ...prev,
+        [field]: prev[field].includes(value) 
+          ? prev[field].filter(v => v !== value) 
+          : [...prev[field], value]
+      }
+    })
+  }
+
+  const handleProviderSwitchableToggle = () => {
+    setFormData(prev => {
+      const isSwitchable = !prev.provider_switchable;
+      // If switching to non-switchable, keep only the first provider if multiple were selected
+      const providers = (!isSwitchable && prev.providers.length > 1) 
+        ? [prev.providers[0]] 
+        : prev.providers;
+      
+      return { ...prev, provider_switchable: isSwitchable, providers }
+    })
   }
 
   const handleAddTag = (e: React.KeyboardEvent) => {
@@ -163,7 +181,9 @@ export function SkillSubmissionForm() {
           Provider Configuration
         </h2>
         <div className="space-y-4">
-          <label className="text-xs font-black text-gray-500 uppercase tracking-widest px-1">Supported AI Providers</label>
+          <label className="text-xs font-black text-gray-500 uppercase tracking-widest px-1">
+            {formData.provider_switchable ? 'Supported AI Providers (Multi-select)' : 'Fixed AI Provider (Single-select)'}
+          </label>
           <div className="flex flex-wrap gap-2">
             {availableProviders.map(provider => (
               <Badge 
@@ -189,7 +209,7 @@ export function SkillSubmissionForm() {
           </div>
           <button
             type="button"
-            onClick={() => setFormData(prev => ({ ...prev, provider_switchable: !prev.provider_switchable }))}
+            onClick={handleProviderSwitchableToggle}
             className={`w-12 h-6 rounded-full relative transition-colors ${formData.provider_switchable ? 'bg-indigo-600' : 'bg-gray-800'}`}
           >
             <motion.div 

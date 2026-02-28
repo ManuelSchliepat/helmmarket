@@ -1,0 +1,25 @@
+{
+  "name": "helm-skill-pii-scanner",
+  "version": "1.0.0",
+  "description": "GDPR-compliant PII detection and redaction \u2014 no external API needed",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "keywords": [
+    "helm",
+    "helm-skill",
+    "pii",
+    "gdpr",
+    "compliance",
+    "privacy"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "peerDependencies": {
+    "@bgub/helm": "^*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

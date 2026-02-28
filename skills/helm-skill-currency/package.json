@@ -1,0 +1,24 @@
+{
+  "name": "helm-skill-currency",
+  "version": "1.0.0",
+  "description": "Live and historical currency conversion via ECB rates",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "keywords": [
+    "helm",
+    "helm-skill",
+    "currency",
+    "finance",
+    "automation"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "peerDependencies": {
+    "@bgub/helm": "^*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

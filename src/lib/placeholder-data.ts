@@ -82,8 +82,8 @@ export const testimonials = [
 ];
 
 export const recentInstalls = [
-  { handle: '@jakub_dev', skill: 'helm-skill-stripe', timeAgo: '2 min ago' },
-  { handle: '@mtech', skill: 'helm-skill-binance', timeAgo: '5 min ago' },
+  { handle: '@jakub_dev', skill: 'stripe-integration', timeAgo: '2 min ago' },
+  { handle: '@mtech', skill: 'binance-connector', timeAgo: '5 min ago' },
   { handle: '@alex_code', skill: 'data-analyzer-pro', timeAgo: '12 min ago' },
   { handle: '@sarah_js', skill: 'email-architect', timeAgo: '18 min ago' },
   { handle: '@dev_ops_ninja', skill: 'aws-manager', timeAgo: '22 min ago' },
@@ -108,7 +108,7 @@ export const placeholderSkills: Skill[] = [
   // SECURITY
   {
     id: 'sec-1',
-    name: 'helm-skill-vuln-scanner',
+    name: 'vuln-scanner',
     slug: 'vuln-scanner',
     description: 'Automated vulnerability scan via NIST NVD API. Provides real-time threat intelligence for your dependencies.',
     price_cents: 19900,
@@ -123,7 +123,7 @@ export const placeholderSkills: Skill[] = [
   },
   {
     id: 'sec-2',
-    name: 'helm-skill-zero-trust-checker',
+    name: 'zero-trust-checker',
     slug: 'zero-trust-checker',
     description: 'Validates Zero Trust policy compliance across your distributed network architecture.',
     price_cents: 29900,
@@ -138,7 +138,7 @@ export const placeholderSkills: Skill[] = [
   },
   {
     id: 'sec-3',
-    name: 'helm-skill-audit-trail',
+    name: 'audit-trail',
     slug: 'audit-trail',
     description: 'Immutable audit log writer to Supabase. Ensures all agent actions are logged for forensic analysis.',
     price_cents: 9900,
@@ -153,7 +153,7 @@ export const placeholderSkills: Skill[] = [
   },
   {
     id: 'sec-4',
-    name: 'helm-skill-anomaly-detect',
+    name: 'anomaly-detect',
     slug: 'anomaly-detect',
     description: 'Network anomaly detection via baseline AI. Identifies suspicious traffic patterns in real-time.',
     price_cents: 49900,
@@ -170,7 +170,7 @@ export const placeholderSkills: Skill[] = [
   // COMPLIANCE
   {
     id: 'comp-1',
-    name: 'helm-skill-eu-ai-act-audit',
+    name: 'eu-ai-act-audit',
     slug: 'eu-ai-act-audit',
     description: 'Checks AI outputs against EU AI Act rules. Automatically generates compliance reports for regulators.',
     price_cents: 59900,
@@ -185,7 +185,7 @@ export const placeholderSkills: Skill[] = [
   },
   {
     id: 'comp-2',
-    name: 'helm-skill-gdpr-data-scan',
+    name: 'gdpr-data-scan',
     slug: 'gdpr-data-scan',
     description: 'Scans data pipelines for GDPR violations. Detects PII leaks before they hit your production database.',
     price_cents: 34900,
@@ -200,7 +200,7 @@ export const placeholderSkills: Skill[] = [
   },
   {
     id: 'comp-3',
-    name: 'helm-skill-us-federal-ai',
+    name: 'us-federal-ai',
     slug: 'us-federal-ai',
     description: 'Validates AI use against US Federal AI policy. Ensures your agents meet government transparency standards.',
     price_cents: 44900,
@@ -215,7 +215,7 @@ export const placeholderSkills: Skill[] = [
   },
   {
     id: 'comp-4',
-    name: 'helm-skill-llm-bias-check',
+    name: 'llm-bias-check',
     slug: 'llm-bias-check',
     description: 'Detects bias in LLM outputs with detailed reporting. Essential for ethical AI deployment.',
     price_cents: 14900,
@@ -232,7 +232,7 @@ export const placeholderSkills: Skill[] = [
   // ENERGY
   {
     id: 'energy-1',
-    name: 'helm-skill-grid-optimizer',
+    name: 'grid-optimizer',
     slug: 'grid-optimizer',
     description: 'Smart grid load balancing via AI prediction. Optimizes energy distribution for industrial facilities.',
     price_cents: 79900,
@@ -247,7 +247,7 @@ export const placeholderSkills: Skill[] = [
   },
   {
     id: 'energy-2',
-    name: 'helm-skill-energy-forecast',
+    name: 'energy-forecast',
     slug: 'energy-forecast',
     description: '24h energy demand forecasting agent. Uses historical data and weather patterns to predict usage.',
     price_cents: 29900,
@@ -262,7 +262,7 @@ export const placeholderSkills: Skill[] = [
   },
   {
     id: 'energy-3',
-    name: 'helm-skill-material-search',
+    name: 'material-search',
     slug: 'material-search',
     description: 'AI search over material science databases. Accelerates R&D for new industrial materials.',
     price_cents: 19900,
@@ -277,7 +277,7 @@ export const placeholderSkills: Skill[] = [
   },
   {
     id: 'energy-4',
-    name: 'helm-skill-sensor-pipeline',
+    name: 'sensor-pipeline',
     slug: 'sensor-pipeline',
     description: 'Industrial IoT sensor data → AI insights. Processes high-frequency telemetry into actionable reports.',
     price_cents: 39900,

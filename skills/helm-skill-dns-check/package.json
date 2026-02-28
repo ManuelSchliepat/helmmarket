@@ -1,0 +1,26 @@
+{
+  "name": "helm-skill-dns-check",
+  "version": "1.0.0",
+  "description": "DNS lookups and email security audits (SPF, DKIM, MX) via Cloudflare DoH",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "keywords": [
+    "helm",
+    "helm-skill",
+    "dns",
+    "security",
+    "spf",
+    "dkim",
+    "email"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "peerDependencies": {
+    "@bgub/helm": "^*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
