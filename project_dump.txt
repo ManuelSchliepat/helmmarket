@@ -1,0 +1,4067 @@
+=== ./next-env.d.ts ===
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+import "./.next/dev/types/routes.d.ts";
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+=== ./skills/helm-skill-currency/index.ts ===
+export async function convert(amount: number, from: string, to: string) {
+  const url = `https://api.frankfurter.app/latest?amount=${amount}&from=${from.toUpperCase()}&to=${to.toUpperCase()}`;
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`Frankfurter API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  const rate = data.rates[to.toUpperCase()];
+  
+  if (rate === undefined) {
+    throw new Error(`Exchange rate not found for ${from} to ${to}`);
+  }
+
+  return {
+    from: data.base,
+    to: to.toUpperCase(),
+    amount: data.amount,
+    result: rate,
+    rate: rate / amount,
+    date: data.date
+  };
+}
+
+export async function getRate(from: string, to: string) {
+  const url = `https://api.frankfurter.app/latest?from=${from.toUpperCase()}&to=${to.toUpperCase()}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Frankfurter API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  const rate = data.rates[to.toUpperCase()];
+
+  if (rate === undefined) {
+    throw new Error(`Exchange rate not found for ${from} to ${to}`);
+  }
+
+  return {
+    from: data.base,
+    to: to.toUpperCase(),
+    rate: rate,
+    date: data.date
+  };
+}
+
+export async function getHistoricalRate(from: string, to: string, date: string) {
+  // Simple validation for YYYY-MM-DD
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new Error('Date must be in YYYY-MM-DD format');
+  }
+
+  const url = `https://api.frankfurter.app/${date}?from=${from.toUpperCase()}&to=${to.toUpperCase()}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Frankfurter API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  const rate = data.rates[to.toUpperCase()];
+
+  if (rate === undefined) {
+    throw new Error(`Exchange rate not found for ${from} to ${to} on ${date}`);
+  }
+
+  return {
+    from: data.base,
+    to: to.toUpperCase(),
+    rate: rate,
+    date: data.date
+  };
+}
+
+export async function listCurrencies(): Promise<Record<string, string>> {
+  const url = `https://api.frankfurter.app/currencies`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Frankfurter API error: ${response.status} ${response.statusText}`);
+  }
+
+  return await response.json() as Record<string, string>;
+}
+
+export const plugin = {
+  name: 'helm-skill-currency',
+  operations: {
+    convert: { permission: 'allow', handler: convert },
+    getRate: { permission: 'allow', handler: getRate },
+    getHistoricalRate: { permission: 'allow', handler: getHistoricalRate },
+    listCurrencies: { permission: 'allow', handler: listCurrencies }
+  }
+};
+=== ./skills/helm-skill-pii-scanner/index.ts ===
+// Luhn algorithm implementation
+function isValidLuhn(num: string): boolean {
+  let sum = 0;
+  let isEven = false;
+  
+  for (let i = num.length - 1; i >= 0; i--) {
+    let digit = parseInt(num.charAt(i), 10);
+    
+    if (isEven) {
+      digit *= 2;
+      if (digit > 9) {
+        digit -= 9;
+      }
+    }
+    
+    sum += digit;
+    isEven = !isEven;
+  }
+  
+  return sum % 10 === 0;
+}
+
+export interface PiiFinding {
+  type: string;
+  value: string;
+  position: number;
+  gdprRelevant: boolean;
+}
+
+export interface PiiScanResult {
+  hasPii: boolean;
+  findings: PiiFinding[];
+  riskLevel: 'none' | 'low' | 'medium' | 'high';
+  gdprCategories: string[];
+}
+
+const PII_PATTERNS = [
+  { type: 'EMAIL', regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, gdpr: true, category: 'Personal Data' },
+  { type: 'PHONE_EU', regex: /(?:\+|00)(?:49|33|44|31|34|39|41|43|45|46|47|48)\s*(?:\(?\d{1,4}\)?[\s\-]*)?\d{3,4}[\s\-]*\d{3,4}[\s\-]*\d{0,4}/g, gdpr: true, category: 'Personal Data' },
+  { type: 'PHONE_US', regex: /(?:\+?1[\s-]?)?(?:\(\d{3}\)|\d{3})[\s-]?\d{3}[\s-]?\d{4}/g, gdpr: true, category: 'Personal Data' },
+  { type: 'IBAN', regex: /[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?){0,16}/g, gdpr: true, category: 'Financial Data' },
+  { type: 'IP_ADDRESS', regex: /(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}/g, gdpr: true, category: 'Online Identifiers' },
+  { type: 'CREDIT_CARD', regex: /(?:\d[ -]*?){13,19}/g, gdpr: true, category: 'Financial Data' },
+  { type: 'DATE_OF_BIRTH', regex: /(?:0[1-9]|[12][0-9]|3[01])[-/.](?:0[1-9]|1[012])[-/.](?:19|20)\d\d|(?:19|20)\d\d[-/.](?:0[1-9]|1[012])[-/.](?:0[1-9]|[12][0-9]|3[01])/g, gdpr: true, category: 'Demographic Data' },
+  { type: 'GERMAN_ID', regex: /[LMT][A-Z0-9]{8}[D]/g, gdpr: true, category: 'Government Identifiers' },
+  { type: 'POSTCODE_DE', regex: /\b\d{5}\b/g, gdpr: false, category: 'Location Data' }
+];
+
+export async function scanText(text: string): Promise<PiiScanResult> {
+  const findings: PiiFinding[] = [];
+  const categories = new Set<string>();
+  
+  for (const pattern of PII_PATTERNS) {
+    let match;
+    // Reset regex index
+    pattern.regex.lastIndex = 0;
+    
+    while ((match = pattern.regex.exec(text)) !== null) {
+      let isFindingValid = true;
+      const value = match[0];
+      
+      if (pattern.type === 'CREDIT_CARD') {
+        const cleanNumber = value.replace(/[\s-]/g, '');
+        if (cleanNumber.length >= 13 && cleanNumber.length <= 19) {
+          isFindingValid = isValidLuhn(cleanNumber);
+        } else {
+          isFindingValid = false;
+        }
+      }
+      
+      if (pattern.type === 'IBAN') {
+         // simple check to avoid catching pure numbers
+         if (!/^[a-zA-Z]{2}/.test(value)) isFindingValid = false;
+      }
+      
+      if (isFindingValid) {
+        findings.push({
+          type: pattern.type,
+          value,
+          position: match.index,
+          gdprRelevant: pattern.gdpr
+        });
+        
+        if (pattern.gdpr) {
+          categories.add(pattern.category);
+        }
+      }
+    }
+  }
+  
+  const hasPii = findings.length > 0;
+  
+  let riskLevel: 'none' | 'low' | 'medium' | 'high' = 'none';
+  if (hasPii) {
+    if (findings.some(f => f.type === 'CREDIT_CARD' || f.type === 'GERMAN_ID')) {
+      riskLevel = 'high';
+    } else if (findings.some(f => f.type === 'IBAN' || f.type === 'EMAIL' || f.type === 'PHONE_EU')) {
+      riskLevel = 'medium';
+    } else {
+      riskLevel = 'low';
+    }
+  }
+
+  return {
+    hasPii,
+    findings,
+    riskLevel,
+    gdprCategories: Array.from(categories)
+  };
+}
+
+export async function redactText(text: string, replacementChar: string = '*') {
+  const scanResult = await scanText(text);
+  let redacted = text;
+  
+  // Sort findings by position descending to avoid offset issues when replacing
+  const sortedFindings = [...scanResult.findings].sort((a, b) => b.position - a.position);
+  
+  for (const finding of sortedFindings) {
+    const replacement = replacementChar.repeat(finding.value.length);
+    redacted = redacted.substring(0, finding.position) + replacement + redacted.substring(finding.position + finding.value.length);
+  }
+  
+  return {
+    redacted,
+    replacedCount: scanResult.findings.length,
+    types: Array.from(new Set(scanResult.findings.map(f => f.type)))
+  };
+}
+
+export async function scanObject(obj: Record<string, unknown>) {
+  const affectedPaths: string[] = [];
+  const findings: Record<string, PiiScanResult> = {};
+  
+  async function traverse(currentObj: any, currentPath: string) {
+    if (currentObj === null || currentObj === undefined) return;
+    
+    if (typeof currentObj === 'string') {
+      const result = await scanText(currentObj);
+      if (result.hasPii) {
+        affectedPaths.push(currentPath);
+        findings[currentPath] = result;
+      }
+    } else if (Array.isArray(currentObj)) {
+      for (let i = 0; i < currentObj.length; i++) {
+        await traverse(currentObj[i], `${currentPath}[${i}]`);
+      }
+    } else if (typeof currentObj === 'object') {
+      for (const [key, value] of Object.entries(currentObj)) {
+        const nextPath = currentPath ? `${currentPath}.${key}` : key;
+        await traverse(value, nextPath);
+      }
+    }
+  }
+  
+  await traverse(obj, '');
+  
+  return {
+    hasPii: affectedPaths.length > 0,
+    affectedPaths,
+    findings
+  };
+}
+
+export const plugin = {
+  name: 'helm-skill-pii-scanner',
+  operations: {
+    scanText: { permission: 'ask', handler: scanText },
+    redactText: { permission: 'ask', handler: redactText },
+    scanObject: { permission: 'ask', handler: scanObject }
+  }
+};
+=== ./skills/helm-skill-dns-check/index.ts ===
+export async function lookup(domain: string, type: string = 'A') {
+  const url = `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=${encodeURIComponent(type)}`;
+  const response = await fetch(url, {
+    headers: {
+      'Accept': 'application/dns-json'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Cloudflare DNS API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  
+  let status = "NOERROR";
+  if (data.Status === 3) status = "NXDOMAIN";
+  else if (data.Status === 2) status = "SERVFAIL";
+
+  return {
+    domain,
+    type,
+    status,
+    records: (data.Answer || []).map((a: any) => ({
+      value: a.data,
+      ttl: a.TTL
+    }))
+  };
+}
+
+export async function checkMxRecords(domain: string) {
+  const result = await lookup(domain, 'MX');
+  
+  const mxRecords = result.records.map(r => {
+    // Cloudflare returns MX data like "10 mail.example.com."
+    const parts = r.value.split(' ');
+    if (parts.length === 2) {
+      return {
+        priority: parseInt(parts[0], 10),
+        exchange: parts[1],
+        ttl: r.ttl
+      };
+    }
+    return { priority: 0, exchange: r.value, ttl: r.ttl };
+  });
+
+  // Sort by priority
+  mxRecords.sort((a, b) => a.priority - b.priority);
+
+  return {
+    domain,
+    hasMailServer: mxRecords.length > 0,
+    mxRecords
+  };
+}
+
+export async function checkSpf(domain: string) {
+  const result = await lookup(domain, 'TXT');
+  
+  let spfRecord: string | null = null;
+  for (const r of result.records) {
+    const value = r.value.replace(/^"|"$/g, ''); // Remove quotes if present
+    if (value.startsWith('v=spf1')) {
+      spfRecord = value;
+      break;
+    }
+  }
+
+  if (!spfRecord) {
+    return {
+      domain,
+      hasSPF: false,
+      spfRecord: null,
+      includes: [],
+      ip4: [],
+      ip6: [],
+      allPolicy: null,
+      securityLevel: 'missing'
+    };
+  }
+
+  const parts = spfRecord.split(/\s+/);
+  const includes = parts.filter(p => p.startsWith('include:')).map(p => p.substring(8));
+  const ip4 = parts.filter(p => p.startsWith('ip4:')).map(p => p.substring(4));
+  const ip6 = parts.filter(p => p.startsWith('ip6:')).map(p => p.substring(4));
+  
+  let allPolicy: string | null = null;
+  const allMatch = parts.find(p => p.endsWith('all'));
+  if (allMatch) {
+    allPolicy = allMatch;
+  }
+
+  let securityLevel: 'good' | 'weak' | 'missing' = 'missing';
+  if (allPolicy === '-all') securityLevel = 'good';
+  else if (allPolicy === '~all') securityLevel = 'weak';
+
+  return {
+    domain,
+    hasSPF: true,
+    spfRecord,
+    includes,
+    ip4,
+    ip6,
+    allPolicy,
+    securityLevel
+  };
+}
+
+export async function checkDkim(domain: string, selector: string = 'default') {
+  const result = await lookup(`${selector}._domainkey.${domain}`, 'TXT');
+  
+  if (result.records.length === 0) {
+    return {
+      domain,
+      selector,
+      hasDKIM: false,
+      publicKey: null,
+      keyType: null
+    };
+  }
+
+  const value = result.records[0].value.replace(/^"|"$/g, '');
+  const parts = value.split(';');
+  
+  let keyType = null;
+  let publicKey = null;
+
+  for (const part of parts) {
+    const p = part.trim();
+    if (p.startsWith('k=')) keyType = p.substring(2);
+    if (p.startsWith('p=')) publicKey = p.substring(2);
+  }
+
+  return {
+    domain,
+    selector,
+    hasDKIM: !!publicKey,
+    publicKey,
+    keyType: keyType || 'rsa' // default is usually RSA if not specified
+  };
+}
+
+export async function fullEmailSecurityAudit(domain: string) {
+  const [mx, spf, dkim] = await Promise.all([
+    checkMxRecords(domain),
+    checkSpf(domain),
+    checkDkim(domain, 'google') // Many modern domains use google or selector1. We'll check default first.
+  ]);
+
+  let score = 0;
+  const recommendations: string[] = [];
+
+  if (mx.hasMailServer) {
+    score += 25;
+  } else {
+    recommendations.push("Configure MX records to enable email receiving.");
+  }
+
+  if (spf.hasSPF) {
+    if (spf.securityLevel === 'good') {
+      score += 25;
+    } else {
+      score += 15;
+      recommendations.push("Update SPF record to end with '-all' (HardFail) instead of '~all' (SoftFail) or '?all' (Neutral).");
+    }
+
+    // Basic check for popular providers
+    if (spf.includes.some(inc => inc.includes('google') || inc.includes('outlook') || inc.includes('sendgrid'))) {
+      score += 25;
+    } else {
+      score += 10; // Still giving some points for having includes
+      recommendations.push("Ensure all third-party email senders are included in the SPF record.");
+    }
+  } else {
+    recommendations.push("Create an SPF (Sender Policy Framework) record to prevent domain spoofing.");
+  }
+
+  // DKIM check might fail if we don't know the exact selector.
+  // We check 'default' in the background as a fallback.
+  let dkimResult = dkim;
+  if (!dkim.hasDKIM) {
+    const fallbackDkim = await checkDkim(domain, 'default');
+    if (fallbackDkim.hasDKIM) dkimResult = fallbackDkim;
+  }
+
+  if (dkimResult.hasDKIM) {
+    score += 25;
+  } else {
+    recommendations.push("Configure DKIM (DomainKeys Identified Mail) signing for outgoing emails. (Note: accurate check requires the exact selector used by your provider)");
+  }
+
+  // Ensure score is within 0-100
+  score = Math.min(100, Math.max(0, score));
+
+  let grade: "A" | "B" | "C" | "D" | "F" = "F";
+  if (score >= 90) grade = "A";
+  else if (score >= 75) grade = "B";
+  else if (score >= 50) grade = "C";
+  else if (score >= 25) grade = "D";
+
+  return {
+    domain,
+    score,
+    grade,
+    mx,
+    spf,
+    dkim: dkimResult,
+    recommendations
+  };
+}
+
+export const plugin = {
+  name: 'helm-skill-dns-check',
+  operations: {
+    lookup: { permission: 'allow', handler: lookup },
+    checkMxRecords: { permission: 'allow', handler: checkMxRecords },
+    checkSpf: { permission: 'allow', handler: checkSpf },
+    checkDkim: { permission: 'allow', handler: checkDkim },
+    fullEmailSecurityAudit: { permission: 'ask', handler: fullEmailSecurityAudit }
+  }
+};
+=== ./skills/test-all.ts ===
+import { searchByCve } from './helm-skill-cve-scanner/index.ts';
+import { convert } from './helm-skill-currency/index.ts';
+import { getWeatherByCity } from './helm-skill-weather/index.ts';
+import { redactText } from './helm-skill-pii-scanner/index.ts';
+import { fullEmailSecurityAudit } from './helm-skill-dns-check/index.ts';
+
+async function runTests() {
+  console.log("--- TESTING helm-skill-cve-scanner ---");
+  try {
+    const cveResult = await searchByCve('CVE-2021-44228'); // Log4Shell
+    console.log(`CVE: ${cveResult?.id}, Severity: ${cveResult?.severity}, Score: ${cveResult?.cvssScore}`);
+  } catch (e: any) {
+    console.error("CVE Scanner Failed:", e.message);
+  }
+
+  console.log("\n--- TESTING helm-skill-currency ---");
+  try {
+    const currencyResult = await convert(100, 'USD', 'EUR');
+    console.log(`100 USD = ${currencyResult.result.toFixed(2)} EUR (Rate: ${currencyResult.rate})`);
+  } catch (e: any) {
+    console.error("Currency Failed:", e.message);
+  }
+
+  console.log("\n--- TESTING helm-skill-weather ---");
+  try {
+    const weatherResult = await getWeatherByCity('Berlin');
+    console.log(`Berlin Weather: ${weatherResult.temperature}°C, ${weatherResult.weatherDescription}, Wind: ${weatherResult.windSpeed}km/h`);
+  } catch (e: any) {
+    console.error("Weather Failed:", e.message);
+  }
+
+  console.log("\n--- TESTING helm-skill-pii-scanner ---");
+  try {
+    const textToScan = "Hello, contact me at john.doe@example.com or call +49 151 1234567. My credit card is 4532 1111 2222 3333.";
+    const piiResult = await redactText(textToScan);
+    console.log("Original: " + textToScan);
+    console.log("Redacted: " + piiResult.redacted);
+    console.log(`Found ${piiResult.replacedCount} PII elements of types: ${piiResult.types.join(', ')}`);
+  } catch (e: any) {
+    console.error("PII Scanner Failed:", e.message);
+  }
+
+  console.log("\n--- TESTING helm-skill-dns-check ---");
+  try {
+    const dnsResult = await fullEmailSecurityAudit('github.com');
+    console.log(`github.com Email Security Grade: ${dnsResult.grade} (Score: ${dnsResult.score})`);
+    console.log(`SPF Status: ${dnsResult.spf.securityLevel}`);
+  } catch (e: any) {
+    console.error("DNS Check Failed:", e.message);
+  }
+}
+
+runTests();
+=== ./skills/helm-skill-weather/index.ts ===
+const WMO_CODES: Record<number, string> = {
+  0: 'Clear sky',
+  1: 'Mainly clear',
+  2: 'Partly cloudy',
+  3: 'Overcast',
+  45: 'Fog',
+  48: 'Depositing rime fog',
+  51: 'Light drizzle',
+  53: 'Moderate drizzle',
+  55: 'Dense drizzle',
+  56: 'Light freezing drizzle',
+  57: 'Dense freezing drizzle',
+  61: 'Slight rain',
+  63: 'Moderate rain',
+  65: 'Heavy rain',
+  66: 'Light freezing rain',
+  67: 'Heavy freezing rain',
+  71: 'Slight snow fall',
+  73: 'Moderate snow fall',
+  75: 'Heavy snow fall',
+  77: 'Snow grains',
+  80: 'Slight rain showers',
+  81: 'Moderate rain showers',
+  82: 'Violent rain showers',
+  85: 'Slight snow showers',
+  86: 'Heavy snow showers',
+  95: 'Thunderstorm',
+  96: 'Thunderstorm with slight hail',
+  99: 'Thunderstorm with heavy hail'
+};
+
+function getWeatherDescription(code: number): string {
+  return WMO_CODES[code] || 'Unknown weather';
+}
+
+export async function getCurrentWeather(latitude: number, longitude: number) {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Open-Meteo API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  const current = data.current;
+
+  return {
+    temperature: current.temperature_2m,
+    feelsLike: current.apparent_temperature,
+    humidity: current.relative_humidity_2m,
+    windSpeed: current.wind_speed_10m,
+    weatherDescription: getWeatherDescription(current.weather_code),
+    precipitation: current.precipitation,
+    unit: "celsius"
+  };
+}
+
+export async function getForecast(latitude: number, longitude: number, days: number = 7) {
+  if (days < 1 || days > 16) {
+    throw new Error('Days must be between 1 and 16');
+  }
+
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max&timezone=auto&forecast_days=${days}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Open-Meteo API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  const daily = data.daily;
+  const result = [];
+
+  for (let i = 0; i < daily.time.length; i++) {
+    result.push({
+      date: daily.time[i],
+      maxTemp: daily.temperature_2m_max[i],
+      minTemp: daily.temperature_2m_min[i],
+      precipitation: daily.precipitation_sum[i],
+      weatherDescription: getWeatherDescription(daily.weather_code[i]),
+      windSpeed: daily.wind_speed_10m_max[i]
+    });
+  }
+
+  return result;
+}
+
+export async function getWeatherByCity(city: string) {
+  const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`;
+  const geoResponse = await fetch(geoUrl);
+
+  if (!geoResponse.ok) {
+    throw new Error(`Open-Meteo Geocoding API error: ${geoResponse.status} ${geoResponse.statusText}`);
+  }
+
+  const geoData = await geoResponse.json();
+  if (!geoData.results || geoData.results.length === 0) {
+    throw new Error(`City not found: ${city}`);
+  }
+
+  const location = geoData.results[0];
+  const weather = await getCurrentWeather(location.latitude, location.longitude);
+
+  return {
+    ...weather,
+    cityName: location.name,
+    country: location.country,
+    timezone: location.timezone
+  };
+}
+
+export const plugin = {
+  name: 'helm-skill-weather',
+  operations: {
+    getCurrentWeather: { permission: 'allow', handler: getCurrentWeather },
+    getForecast: { permission: 'allow', handler: getForecast },
+    getWeatherByCity: { permission: 'allow', handler: getWeatherByCity }
+  }
+};
+=== ./skills/helm-skill-cve-scanner/index.ts ===
+export async function searchByCve(cveId: string) {
+  const url = `https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=${encodeURIComponent(cveId)}`;
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`NVD API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  if (!data.vulnerabilities || data.vulnerabilities.length === 0) {
+    return null;
+  }
+
+  const cve = data.vulnerabilities[0].cve;
+  const metrics = cve.metrics?.cvssMetricV31?.[0]?.cvssData || cve.metrics?.cvssMetricV30?.[0]?.cvssData || cve.metrics?.cvssMetricV2?.[0]?.cvssData;
+  
+  return {
+    id: cve.id,
+    description: cve.descriptions.find((d: any) => d.lang === 'en')?.value || 'No description available',
+    severity: metrics?.baseSeverity || 'UNKNOWN',
+    cvssScore: metrics?.baseScore || null,
+    publishedDate: cve.published,
+    affectedProducts: cve.configurations?.flatMap((c: any) => c.nodes?.flatMap((n: any) => n.cpeMatch?.map((m: any) => m.criteria))) || [],
+    referenceUrls: cve.references?.map((r: any) => r.url) || []
+  };
+}
+
+export async function searchByKeyword(keyword: string, limit: number = 10) {
+  const url = `https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch=${encodeURIComponent(keyword)}&resultsPerPage=${limit}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`NVD API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  if (!data.vulnerabilities) return [];
+
+  return data.vulnerabilities.map((v: any) => {
+    const cve = v.cve;
+    const metrics = cve.metrics?.cvssMetricV31?.[0]?.cvssData || cve.metrics?.cvssMetricV30?.[0]?.cvssData || cve.metrics?.cvssMetricV2?.[0]?.cvssData;
+    
+    return {
+      id: cve.id,
+      description: cve.descriptions.find((d: any) => d.lang === 'en')?.value || 'No description available',
+      severity: metrics?.baseSeverity || 'UNKNOWN',
+      cvssScore: metrics?.baseScore || null
+    };
+  });
+}
+
+export async function getRecentCritical(daysBack: number = 7) {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - daysBack);
+
+  const startStr = startDate.toISOString().split('.')[0] + 'Z';
+  const endStr = endDate.toISOString().split('.')[0] + 'Z';
+
+  const url = `https://services.nvd.nist.gov/rest/json/cves/2.0?pubStartDate=${startStr}&pubEndDate=${endStr}&cvssV3Severity=CRITICAL`;
+  
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`NVD API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  if (!data.vulnerabilities) return [];
+
+  const results = data.vulnerabilities.map((v: any) => {
+    const cve = v.cve;
+    const metrics = cve.metrics?.cvssMetricV31?.[0]?.cvssData || cve.metrics?.cvssMetricV30?.[0]?.cvssData || cve.metrics?.cvssMetricV2?.[0]?.cvssData;
+    
+    return {
+      id: cve.id,
+      description: cve.descriptions.find((d: any) => d.lang === 'en')?.value || 'No description available',
+      severity: metrics?.baseSeverity || 'UNKNOWN',
+      cvssScore: metrics?.baseScore || null,
+      publishedDate: cve.published
+    };
+  });
+
+  return results.sort((a: any, b: any) => (b.cvssScore || 0) - (a.cvssScore || 0));
+}
+
+// In a real Helm skill, you would use the builder pattern to expose these.
+export const plugin = {
+  name: 'helm-skill-cve-scanner',
+  operations: {
+    searchByCve: { permission: 'allow', handler: searchByCve },
+    searchByKeyword: { permission: 'allow', handler: searchByKeyword },
+    getRecentCritical: { permission: 'allow', handler: getRecentCritical }
+  }
+};
+=== ./next.config.ts ===
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+};
+
+export default nextConfig;
+=== ./src/middleware.ts ===
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+
+const isPublicRoute = createRouteMatcher([
+  '/', 
+  '/sign-in(.*)', 
+  '/sign-up(.*)', 
+  '/skills(.*)', 
+  '/waitlist(.*)', 
+  '/api/mcp/(.*)/manifest', // Explicitly public
+  '/api/mcp/(.*)/execute',  // Public from Clerk's perspective, but manually protected by install_token in route.ts
+])
+
+export default clerkMiddleware(async (auth, request) => {
+  if (!isPublicRoute(request)) {
+    await auth.protect()
+  }
+})
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
+};
+=== ./src/app/dashboard/loading.tsx ===
+export default function DashboardLoading() {
+  return (
+    <div className="container mx-auto py-10 px-4 md:px-6 flex flex-col md:flex-row gap-8 animate-pulse">
+      <aside className="w-full md:w-64 shrink-0 hidden md:block space-y-4">
+        {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-10 bg-gray-800 rounded-lg w-full" />)}
+      </aside>
+      <main className="flex-1 space-y-8">
+        <div className="flex justify-between items-center mb-6">
+          <div className="space-y-2">
+            <div className="h-8 bg-gray-800 rounded w-64" />
+            <div className="h-4 bg-gray-800 rounded w-96" />
+          </div>
+          <div className="h-10 bg-gray-800 rounded w-32" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-28 bg-gray-800 rounded-xl w-full" />)}
+        </div>
+        <div className="grid lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            <div className="h-64 bg-gray-800 rounded-xl w-full" />
+            <div className="h-48 bg-gray-800 rounded-xl w-full" />
+          </div>
+          <div className="h-96 bg-gray-800 rounded-xl w-full" />
+        </div>
+      </main>
+    </div>
+  )
+}
+=== ./src/app/dashboard/page.tsx ===
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { getDeveloper } from '@/services/supabase/skills'
+import { LayoutDashboard, Package, BarChart3, CreditCard, Settings, CheckCircle2, Circle, ArrowRight } from 'lucide-react'
+
+export default async function DashboardPage() {
+  const { userId } = await auth()
+  
+  if (!userId) redirect('/onboarding')
+
+  const developer = await getDeveloper(userId)
+  if (!developer?.stripe_account_id) redirect('/onboarding')
+
+  return (
+    <div className="container mx-auto py-32 px-6 flex flex-col lg:flex-row gap-16">
+      
+      {/* Sidebar */}
+      <aside className="w-full lg:w-64 shrink-0">
+        <nav className="space-y-2 lg:sticky lg:top-32">
+          {[
+            { label: 'Overview', icon: LayoutDashboard, active: true },
+            { label: 'My Skills', icon: Package },
+            { label: 'Analytics', icon: BarChart3 },
+            { label: 'Earnings', icon: CreditCard },
+            { label: 'Settings', icon: Settings }
+          ].map((item) => (
+            <Link 
+              key={item.label} 
+              href="#" 
+              className={`flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                item.active ? 'bg-zinc-900 text-white' : 'text-zinc-500 hover:text-white'
+              }`}
+            >
+              <item.icon className="w-4 h-4" />
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 space-y-16">
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-8">
+          <div>
+            <h1 className="text-3xl font-semibold text-white tracking-tight mb-2">Developer Console</h1>
+            <p className="text-zinc-500 font-medium">Manage your skills and track performance.</p>
+          </div>
+          <Button asChild className="h-10 px-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-medium shadow-lg shadow-indigo-600/20">
+            <Link href="/publish">Publish Skill</Link>
+          </Button>
+        </header>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            { label: 'Total Earnings', val: '€0.00' },
+            { label: 'Active Installs', val: '0' },
+            { label: 'Avg Rating', val: '-.--' },
+            { label: 'Skills Live', val: '0' }
+          ].map((stat) => (
+            <Card key={stat.label} className="bg-zinc-900 border-zinc-800 rounded-2xl p-6 shadow-none">
+              <p className="text-xs font-medium text-zinc-500 uppercase tracking-widest mb-4">{stat.label}</p>
+              <div className="text-2xl font-semibold text-white tracking-tight">{stat.val}</div>
+            </Card>
+          ))}
+        </div>
+
+        <div className="grid lg:grid-cols-3 gap-12">
+          
+          <div className="lg:col-span-2 space-y-12">
+            {/* Checklist */}
+            <div className="p-8 bg-zinc-900 border border-zinc-800 rounded-3xl relative overflow-hidden">
+              <h2 className="text-xl font-medium text-white mb-8">Launch Checklist</h2>
+              <div className="space-y-6">
+                {[
+                  { label: 'Developer account created', done: true },
+                  { label: 'Stripe connected', done: true },
+                  { label: 'Publish first Helm skill', done: false, cta: 'Upload' },
+                  { label: 'First installation received', done: false }
+                ].map((item, i) => (
+                  <div key={i} className={`flex items-start gap-4 ${item.done ? 'opacity-40' : ''}`}>
+                    {item.done ? (
+                      <CheckCircle2 className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+                    ) : (
+                      <Circle className="w-5 h-5 text-zinc-700 shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1">
+                      <p className={`text-sm font-medium ${item.done ? 'text-zinc-400 line-through' : 'text-zinc-200'}`}>{item.label}</p>
+                      {!item.done && item.cta && (
+                        <Link href="/publish" className="text-xs font-bold text-indigo-400 hover:text-indigo-300 mt-2 inline-flex items-center gap-1 transition-all group">
+                          {item.cta} <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Empty State */}
+            <div className="py-24 text-center bg-zinc-900/30 border border-zinc-800 border-dashed rounded-3xl">
+              <div className="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Package className="w-6 h-6 text-zinc-600" />
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">No active skills</h3>
+              <p className="text-zinc-500 max-w-xs mx-auto mb-8 font-medium">Your first published skill will appear here.</p>
+              <Button asChild variant="outline" className="h-10 px-8 border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-white rounded-full transition-all">
+                <Link href="/publish">Publish Now</Link>
+              </Button>
+            </div>
+          </div>
+
+          {/* Sidebar Info */}
+          <aside className="p-8 bg-zinc-900 border border-zinc-800 rounded-3xl space-y-8">
+            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Payouts</h3>
+            <div className="flex items-center justify-between p-4 bg-black/20 rounded-xl border border-zinc-800">
+              <div className="text-xs font-medium text-white">Stripe Connect</div>
+              <div className="text-[10px] font-bold text-emerald-500 uppercase px-2 py-0.5 bg-emerald-500/10 rounded-md">Active</div>
+            </div>
+            <p className="text-xs text-zinc-500 leading-relaxed font-medium">
+              Funds clear in 2-3 days and are paid out automatically every Monday to your linked bank account.
+            </p>
+          </aside>
+
+        </div>
+      </main>
+    </div>
+  )
+}
+=== ./src/app/publish/page.tsx ===
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
+import { SkillSubmissionForm } from '@/components/publish/SkillSubmissionForm'
+import { getDeveloper } from '@/services/supabase/skills'
+
+export default async function PublishPage() {
+  const { userId } = await auth()
+  
+  if (!userId) {
+    redirect('/onboarding')
+  }
+
+  const developer = await getDeveloper(userId)
+  
+  if (!developer?.stripe_account_id) {
+    redirect('/onboarding')
+  }
+
+  return (
+    <div className="container mx-auto py-10 px-4 md:px-6">
+      <header className="mb-12 text-center">
+        <h1 className="text-4xl font-bold mb-4">Publish Your Skill</h1>
+        <p className="text-xl text-gray-500">
+          Share your AI Agent capabilities with the Helm community. 
+          Provide accurate metadata and permission requirements for review.
+        </p>
+      </header>
+
+      <SkillSubmissionForm />
+    </div>
+  )
+}
+=== ./src/app/layout.tsx ===
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import { ClerkProvider } from '@clerk/nextjs'
+import "./globals.css";
+import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
+import { CookieBanner } from "@/components/layout/CookieBanner";
+import { MobileNav } from "@/components/layout/MobileNav";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Helm Market - AI Agent Skills Marketplace",
+  description: "Discover, install and monetize AI Agent Skills for the Helm framework.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "pk_test_ZXF1YWwtZ251LTIxLmNsZXJrLmFjY291bnRzLmRldiQ"
+
+  return (
+    <ClerkProvider publishableKey={clerkKey}>
+      <html lang="en" className="dark">
+        <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#09090b] text-gray-100 min-h-screen flex flex-col pb-16 md:pb-0`}>
+          <Header />
+          <div className="flex-1">
+            {children}
+          </div>
+          <Footer />
+          <MobileNav />
+          <CookieBanner />
+        </body>
+      </html>
+    </ClerkProvider>
+  );
+}
+=== ./src/app/api/waitlist/route.ts ===
+import { NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
+import { createClient } from '@/utils/supabase/server'
+
+export async function POST(request: Request) {
+  try {
+    const { email } = await request.json()
+
+    if (!email || !email.includes('@')) {
+      return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
+    }
+
+    const supabase = await createClient()
+    const { error } = await supabase
+      .from('waitlist')
+      .insert({ email })
+
+    if (error) {
+      console.error('Waitlist error code:', error.code)
+      console.error('Waitlist error message:', error.message)
+      
+      // If it's a duplicate (already on waitlist), treat it as success or separate message
+      if (error.code === '23505') {
+         return NextResponse.json({ success: true, message: 'Already on list' })
+      }
+      
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error('Waitlist catch error:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+=== ./src/app/api/mcp/[slug]/manifest/route.ts ===
+import { NextResponse } from 'next/server'
+import { createClient } from '@/utils/supabase/server'
+import { translateToMCPManifest, HelmConfig } from '@/lib/mcp/utils'
+
+export const dynamic = 'force-dynamic'
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  const { slug } = await params
+  const supabase = await createClient(true)
+  const { data: skill, error } = await supabase
+    .from('skills')
+    .select('*')
+    .eq('slug', slug)
+    .single()
+
+  if (error || !skill) {
+    return NextResponse.json({ error: 'Skill not found' }, { status: 404 })
+  }
+
+  const config = skill.config as HelmConfig
+  if (!config || !config.operations) {
+    return NextResponse.json({ error: 'Skill has no MCP-compatible configuration' }, { status: 400 })
+  }
+
+  const manifest = translateToMCPManifest(config, slug)
+  return NextResponse.json(manifest)
+}
+=== ./src/app/api/mcp/[slug]/execute/route.ts ===
+import { NextResponse } from 'next/server'
+import { createClient } from '@/utils/supabase/server'
+import { HelmConfig } from '@/lib/mcp/utils'
+
+export const dynamic = 'force-dynamic'
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  const { slug } = await params
+  const supabase = await createClient(true)
+  const { data: skill, error } = await supabase
+    .from('skills')
+    .select('*')
+    .eq('slug', slug)
+    .single()
+
+  if (error || !skill) {
+    return NextResponse.json({ error: 'Skill not found' }, { status: 404 })
+  }
+
+  const authHeader = request.headers.get('Authorization')
+  if (!authHeader?.startsWith('Bearer ')) {
+    return NextResponse.json({ error: 'Missing or invalid install_token' }, { status: 401 })
+  }
+  const token = authHeader.split(' ')[1]
+
+  // TODO: In a real implementation, we would verify the install_token against a database of issued tokens.
+  // For now, we allow any token for the sake of the bridge demonstration.
+  if (token !== 'test-install-token') {
+     return NextResponse.json({ error: 'Unauthorized: Invalid install_token' }, { status: 403 })
+  }
+
+  try {
+    const { toolName, arguments: args } = await request.json()
+    const config = (skill as any).config as HelmConfig
+    const operation = config.operations.find(op => op.name === toolName)
+
+    if (!operation) {
+      return NextResponse.json({ error: `Tool ${toolName} not found` }, { status: 400 })
+    }
+
+    // Here we would proxy to the actual skill execution logic.
+    // For now, we simulate a successful execution result.
+    return NextResponse.json({
+      content: [
+        {
+          type: "text",
+          text: `Executed ${toolName} for ${slug} with args: ${JSON.stringify(args)}`
+        }
+      ]
+    })
+  } catch (err) {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+=== ./src/app/api/skills/route.ts ===
+import { auth } from '@clerk/nextjs/server'
+export const dynamic = 'force-dynamic'
+import { NextResponse } from 'next/server'
+import { createClient } from '@/utils/supabase/server'
+
+export async function POST(request: Request) {
+  const { userId } = await auth()
+  
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const supabase = await createClient()
+
+  // Verify developer exists
+  const { data: developer, error: devError } = await supabase
+    .from('developers')
+    .select('id')
+    .eq('id', userId)
+    .single()
+
+  if (devError || !developer) {
+    return NextResponse.json({ error: 'Not registered as a developer' }, { status: 403 })
+  }
+
+  try {
+    const skillData = await request.json()
+    
+    // Parse and validate config if provided
+    let parsedConfig = {}
+    if (skillData.config) {
+      try {
+        parsedConfig = JSON.parse(skillData.config)
+      } catch (e) {
+        return NextResponse.json({ error: 'Invalid JSON in helm.config.json' }, { status: 400 })
+      }
+    }
+
+    // Auto-assign developer_id and update config
+    const finalSkillData = {
+      ...skillData,
+      config: parsedConfig,
+      developer_id: userId,
+      status: 'pending_review'
+    }
+
+    const { data: skill, error: skillError } = await supabase
+      .from('skills')
+      .insert(finalSkillData)
+      .select()
+      .single()
+
+    if (skillError) {
+      console.error('Skill insert error:', skillError)
+      return NextResponse.json({ error: skillError.message }, { status: 500 })
+    }
+
+    return NextResponse.json(skill)
+  } catch (err) {
+    console.error('Skill submission catch error:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+=== ./src/app/api/webhooks/clerk/route.ts ===
+import { Webhook } from 'svix'
+import { headers } from 'next/headers'
+import { WebhookEvent } from '@clerk/nextjs/server'
+import { createClient } from '@/utils/supabase/server'
+
+export async function POST(req: Request) {
+  const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET
+
+  if (!WEBHOOK_SECRET) {
+    throw new Error('Please add CLERK_WEBHOOK_SECRET from Clerk Dashboard to .env or .env.local')
+  }
+
+  // Get the headers
+  const headerPayload = await headers()
+  const svix_id = headerPayload.get('svix-id')
+  const svix_timestamp = headerPayload.get('svix-timestamp')
+  const svix_signature = headerPayload.get('svix-signature')
+
+  // If there are no headers, error out
+  if (!svix_id || !svix_timestamp || !svix_signature) {
+    return new Response('Error occured -- no svix headers', {
+      status: 400,
+    })
+  }
+
+  // Get the body
+  const payload = await req.json()
+  const body = JSON.stringify(payload)
+
+  // Create a new Svix instance with your secret.
+  const wh = new Webhook(WEBHOOK_SECRET)
+
+  let evt: WebhookEvent
+
+  // Verify the payload with the headers
+  try {
+    evt = wh.verify(body, {
+      'svix-id': svix_id,
+      'svix-timestamp': svix_timestamp,
+      'svix-signature': svix_signature,
+    }) as WebhookEvent
+  } catch (err) {
+    console.error('Error verifying webhook:', err)
+    return new Response('Error occured', {
+      status: 400,
+    })
+  }
+
+  const { id } = evt.data
+  const eventType = evt.type
+
+  if (eventType === 'user.created' || eventType === 'user.updated') {
+    const { email_addresses, first_name, last_name, image_url } = evt.data
+    const email = email_addresses[0].email_address
+    const supabase = await createClient()
+
+    const { error } = await supabase
+      .from('users')
+      .upsert({
+        id: id,
+        email: email,
+        full_name: `${first_name || ''} ${last_name || ''}`.trim(),
+        avatar_url: image_url,
+        updated_at: new Date().toISOString(),
+      })
+
+    if (error) {
+      console.error('Error upserting user to Supabase:', error)
+      return new Response('Error updating database', { status: 500 })
+    }
+  }
+
+  return new Response('', { status: 200 })
+}
+=== ./src/app/api/onboarding/route.ts ===
+import { auth } from '@clerk/nextjs/server'
+export const dynamic = 'force-dynamic'
+import { NextResponse } from 'next/server'
+import { stripe } from '@/lib/stripe'
+import { createClient } from '@/utils/supabase/server'
+
+export async function POST() {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      console.error('Onboarding Error: No userId found (User not logged in via Clerk)')
+      return NextResponse.json({ error: 'Please log in first' }, { status: 401 })
+    }
+
+    const supabase = await createClient(true)
+
+    // 1. Get or create developer
+    const { data: developer, error: fetchError } = await supabase
+      .from('developers')
+      .select('stripe_account_id')
+      .eq('id', userId)
+      .single()
+
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found" which is fine
+      console.error('Supabase Fetch Error:', fetchError)
+      return NextResponse.json({ error: `Database fetch failed: ${fetchError.message}` }, { status: 500 })
+    }
+
+    let stripeAccountId = developer?.stripe_account_id
+
+    if (!stripeAccountId) {
+      console.log('Creating new Stripe Account for user:', userId)
+      try {
+        const account = await stripe.accounts.create({
+          type: 'standard',
+          business_type: 'individual',
+          capabilities: {
+            card_payments: { requested: true },
+            transfers: { requested: true },
+          },
+        })
+        stripeAccountId = account.id
+      } catch (stripeErr: any) {
+        console.error('Stripe Account Creation Error:', stripeErr)
+        return NextResponse.json({ error: `Stripe error: ${stripeErr.message}` }, { status: 500 })
+      }
+
+      console.log('Upserting developer into Supabase with Stripe ID:', stripeAccountId)
+      const { error: insertError } = await supabase.from('developers').upsert({
+        id: userId,
+        stripe_account_id: stripeAccountId,
+      })
+
+      if (insertError) {
+        console.error('Supabase Upsert Error:', insertError)
+        return NextResponse.json({ error: `Database update failed: ${insertError.message}.` }, { status: 500 })
+      }
+    }
+
+    // 2. Create account link
+    console.log('Creating Stripe Account Link for:', stripeAccountId)
+    
+    // Use the custom domain if available, otherwise fallback to env
+    const baseUrl = 'https://helmmarket.com'
+    
+    const accountLink = await stripe.accountLinks.create({
+      account: stripeAccountId,
+      refresh_url: `${baseUrl}/onboarding?refresh=true`,
+      return_url: `${baseUrl}/onboarding/success`,
+      type: 'account_onboarding',
+    })
+
+    return NextResponse.json({ url: accountLink.url })
+  } catch (globalErr: any) {
+    console.error('Global Onboarding API Error:', globalErr)
+    return NextResponse.json({ error: `Server error: ${globalErr.message}` }, { status: 500 })
+  }
+}
+=== ./src/app/skills/loading.tsx ===
+export default function SkillsLoading() {
+  return (
+    <div className="container mx-auto py-10 px-4 md:px-6">
+      <div className="flex flex-col md:flex-row gap-8">
+        {/* Sidebar Skeleton */}
+        <aside className="w-full md:w-64 shrink-0 space-y-6 hidden md:block">
+          <div className="space-y-4">
+            <div className="h-6 bg-gray-800 rounded w-1/3 animate-pulse" />
+            <div className="space-y-2">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="h-4 bg-gray-800 rounded w-full animate-pulse" />
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        {/* Main Content Skeleton */}
+        <main className="flex-1 space-y-8">
+          <div className="flex justify-between items-center mb-6">
+            <div className="h-8 bg-gray-800 rounded w-1/4 animate-pulse" />
+            <div className="h-10 bg-gray-800 rounded w-48 animate-pulse" />
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-[280px] bg-gray-900 rounded-xl border border-gray-800 p-5 flex flex-col animate-pulse">
+                <div className="flex gap-4 mb-4">
+                  <div className="w-12 h-12 bg-gray-800 rounded-xl shrink-0" />
+                  <div className="flex-1 space-y-2 py-1">
+                    <div className="h-5 bg-gray-800 rounded w-3/4" />
+                    <div className="h-3 bg-gray-800 rounded w-1/2" />
+                  </div>
+                </div>
+                <div className="space-y-2 mb-auto">
+                  <div className="h-4 bg-gray-800 rounded w-full" />
+                  <div className="h-4 bg-gray-800 rounded w-5/6" />
+                </div>
+                <div className="pt-4 border-t border-gray-800 flex justify-between mt-4">
+                  <div className="h-5 bg-gray-800 rounded w-1/4" />
+                  <div className="h-5 bg-gray-800 rounded w-1/5" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
+      </div>
+    </div>
+  )
+}
+=== ./src/app/skills/page.tsx ===
+'use client'
+
+import { useState, useMemo } from 'react'
+import { SkillCard } from '@/components/skills/SkillCard'
+import { Input } from '@/components/ui/input'
+import { categoryFilters, placeholderSkills } from '@/lib/placeholder-data'
+import { Search, ShieldCheck } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+
+export default function SkillsPage() {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeCategory, setActiveCategory] = useState('all')
+  const [complianceOnly, setComplianceOnly] = useState(false)
+
+  const filteredSkills = useMemo(() => {
+    return placeholderSkills.filter(skill => {
+      const matchesSearch = skill.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                           skill.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = activeCategory === 'all' || skill.category === activeCategory;
+      const matchesCompliance = !complianceOnly || skill.compliance_labels.length > 0;
+      
+      return matchesSearch && matchesCategory && matchesCompliance;
+    });
+  }, [searchQuery, activeCategory, complianceOnly]);
+
+  return (
+    <div className="container mx-auto pt-48 pb-32 px-6">
+      <div className="flex flex-col gap-24">
+        
+        {/* Header */}
+        <div className="max-w-2xl">
+          <h1 className="text-4xl md:text-6xl font-semibold text-white mb-8 tracking-tight">Marketplace</h1>
+          <p className="text-zinc-400 text-lg md:text-xl leading-relaxed">
+            Discover verified skills to extend your autonomous agents. 
+            Typed, sandboxed, and production-ready.
+          </p>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col gap-12 border-b border-zinc-900 pb-12">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="relative group w-full md:w-[400px]">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-white transition-colors" />
+              <Input 
+                placeholder="Search premium skills..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-12 bg-zinc-900 border-zinc-800 h-14 rounded-2xl focus-visible:ring-indigo-500 text-base"
+              />
+            </div>
+            
+            <button 
+              onClick={() => setComplianceOnly(!complianceOnly)}
+              className={`flex items-center gap-2 h-14 px-6 rounded-2xl border transition-all text-sm font-medium ${
+                complianceOnly 
+                  ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' 
+                  : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              Compliance Ready
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
+            {categoryFilters.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`whitespace-nowrap px-6 py-2.5 rounded-full text-sm font-medium transition-all border ${
+                  activeCategory === cat.id
+                    ? 'bg-white border-white text-black shadow-lg shadow-white/10'
+                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600'
+                }`}
+              >
+                {cat.name.split(' ')[0]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <AnimatePresence mode="popLayout">
+            {filteredSkills.map((skill, index) => (
+              <SkillCard key={skill.id} skill={skill} index={index} />
+            ))}
+          </AnimatePresence>
+        </div>
+
+        {filteredSkills.length === 0 && (
+          <div className="py-48 text-center bg-zinc-900/30 border border-zinc-800 border-dashed rounded-[3rem]">
+            <p className="text-zinc-500 font-medium">No skills matching your criteria.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+=== ./src/app/skills/[slug]/loading.tsx ===
+export default function SkillDetailLoading() {
+  return (
+    <div className="container mx-auto py-10 px-4 md:px-6 animate-pulse">
+      <div className="flex gap-6 items-center mb-10">
+        <div className="w-20 h-20 bg-gray-800 rounded-2xl" />
+        <div className="space-y-3 flex-1">
+          <div className="h-8 bg-gray-800 rounded w-1/3" />
+          <div className="h-4 bg-gray-800 rounded w-1/2" />
+        </div>
+      </div>
+      <div className="grid gap-10 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-8">
+          <div className="flex gap-4 border-b border-gray-800 pb-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-6 w-24 bg-gray-800 rounded" />
+            ))}
+          </div>
+          <div className="h-64 bg-gray-800 rounded-xl" />
+          <div className="space-y-4">
+            <div className="h-4 bg-gray-800 rounded w-full" />
+            <div className="h-4 bg-gray-800 rounded w-full" />
+            <div className="h-4 bg-gray-800 rounded w-3/4" />
+          </div>
+        </div>
+        <div className="space-y-6">
+          <div className="h-40 bg-gray-800 rounded-xl" />
+          <div className="h-32 bg-gray-800 rounded-xl" />
+          <div className="h-48 bg-gray-800 rounded-xl" />
+        </div>
+      </div>
+    </div>
+  )
+}
+=== ./src/app/skills/[slug]/page.tsx ===
+import { getSkillBySlug } from '@/services/supabase/skills'
+export const dynamic = 'force-dynamic'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+import { SkillDetailClient } from '@/components/skills/SkillDetailClient'
+import { ChevronLeft, ShieldCheck } from 'lucide-react'
+import { placeholderSkills } from '@/lib/placeholder-data'
+
+export default async function SkillDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  
+  // Try to find in placeholder data first
+  let skill = placeholderSkills.find(s => s.slug === slug)
+  if (!skill) {
+    try {
+      skill = await getSkillBySlug(slug)
+    } catch (e) {}
+  }
+
+  if (!skill) notFound()
+
+  const price = (skill.price_cents / 100).toFixed(2)
+  const authorName = skill.developers?.users?.full_name || 'Verified Publisher'
+
+  return (
+    <div className="container mx-auto py-48 px-6">
+      <Link href="/skills" className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-white transition-colors mb-16 group">
+        <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+        Marketplace
+      </Link>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-24 items-start">
+        <div className="lg:col-span-2 space-y-24">
+          <div>
+            <div className="flex items-center gap-3 text-indigo-400 font-bold text-xs uppercase tracking-[0.2em] mb-8">
+              {skill.category.replace('-', ' ')}
+              {skill.provider_switchable && <span className="text-zinc-700 px-1">•</span>}
+              {skill.provider_switchable && <span className="text-zinc-500">Provider Agnostic</span>}
+            </div>
+            <h1 className="text-5xl md:text-7xl font-semibold text-white mb-10 tracking-tight leading-tight">
+              {skill.name}
+            </h1>
+            <p className="text-zinc-400 text-xl leading-[1.8] max-w-2xl">
+              {skill.description || 'Enterprise-grade skill for autonomous agent capabilities.'}
+            </p>
+          </div>
+
+          <SkillDetailClient skill={skill} />
+        </div>
+
+        <aside className="space-y-12 lg:sticky lg:top-32">
+          <Card className="bg-zinc-900 border-zinc-800 rounded-3xl p-10 shadow-none">
+            <div className="mb-10">
+              <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">Lifetime License</div>
+              <div className="text-5xl font-semibold text-white tracking-tighter">${price}</div>
+            </div>
+            
+            <div className="space-y-4">
+              <Button className="w-full h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold transition-all shadow-lg shadow-indigo-600/20 text-base uppercase tracking-widest">
+                Buy skill
+              </Button>
+              <Button variant="outline" className="w-full h-14 bg-transparent border-zinc-800 text-zinc-400 hover:border-zinc-600 rounded-full font-bold transition-all text-base uppercase tracking-widest">
+                Trial
+              </Button>
+            </div>
+
+            <div className="mt-12 pt-10 border-t border-zinc-800 space-y-6 text-sm font-medium">
+              <div className="flex justify-between items-center">
+                <span className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Publisher</span>
+                <span className="text-white font-bold">{authorName}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Integrity</span>
+                <span className="text-emerald-500 flex items-center gap-2 font-bold uppercase text-[10px] tracking-widest">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                  Verified
+                </span>
+              </div>
+            </div>
+          </Card>
+
+          {skill.compliance_labels.length > 0 && (
+            <div className="p-10 bg-zinc-900 border border-zinc-800 rounded-3xl">
+              <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-10">Compliance</h3>
+              <div className="flex flex-col gap-6">
+                {skill.compliance_labels.map(label => (
+                  <div key={label} className="flex items-center gap-4 text-zinc-300 text-xs font-bold uppercase tracking-widest">
+                    <ShieldCheck className="w-5 h-5 text-indigo-500" />
+                    {label.replace(/_/g, ' ')}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </aside>
+      </div>
+    </div>
+  )
+}
+=== ./src/app/page.tsx ===
+'use client'
+
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
+import { companies, placeholderSkills, testimonials } from "@/lib/placeholder-data";
+import { SkillCard } from "@/components/skills/SkillCard";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
+
+export default function Home() {
+  const featuredSkills = placeholderSkills.slice(0, 3);
+  const mainTestimonial = testimonials[1];
+
+  return (
+    <div className="flex flex-col min-h-screen bg-[#0a0a0a] selection-indigo">
+      <main className="flex-1">
+        
+        {/* HERO SECTION */}
+        <section className="relative pt-48 pb-32 overflow-hidden">
+          <div className="container px-6 mx-auto relative z-10">
+            <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <h1 className="text-5xl md:text-7xl font-semibold tracking-tight text-white mb-8 leading-[1.1]">
+                  The infrastructure for <br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-b from-indigo-300 to-indigo-600">AI agent capabilities</span>
+                </h1>
+                <p className="mx-auto max-w-2xl text-lg md:text-xl text-zinc-400 leading-relaxed mb-12">
+                  Helm Market provides typed, sandboxed skills for autonomous agents. 
+                  Discover, install, and monetize secure integrations in minutes.
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <Button asChild size="lg" className="h-12 px-8 bg-white text-black hover:bg-zinc-200 rounded-full font-medium transition-all shadow-lg">
+                    <Link href="/skills">Get Started</Link>
+                  </Button>
+                  <Button asChild variant="outline" size="lg" className="h-12 px-8 bg-transparent border-zinc-800 hover:border-zinc-600 text-white rounded-full font-medium transition-all">
+                    <Link href="/onboarding">Sell your skills</Link>
+                  </Button>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+
+        {/* TRUST LOGOS */}
+        <section className="py-24 border-y border-zinc-900/50">
+          <div className="container px-6 mx-auto">
+            <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20 opacity-30 grayscale contrast-125">
+              {companies.map((company) => (
+                <div key={company.name} className="text-xl md:text-2xl font-bold text-white tracking-tighter">
+                  {company.name}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* FEATURED SKILLS */}
+        <section className="py-32">
+          <div className="container px-6 mx-auto">
+            <div className="max-w-xl mb-24">
+              <h2 className="text-3xl font-medium text-white mb-6 tracking-tight">Verified agent skills</h2>
+              <p className="text-zinc-400 text-lg leading-relaxed">
+                Production-ready modules for security, data analysis, and industrial automation.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {featuredSkills.map((skill, index) => (
+                <SkillCard key={skill.id} skill={skill} index={index} />
+              ))}
+            </div>
+            
+            <div className="mt-16 flex justify-center">
+              <Link href="/skills" className="text-sm font-medium text-zinc-500 hover:text-white flex items-center gap-2 group transition-colors">
+                View full marketplace <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* HOW IT WORKS / FEATURES */}
+        <section className="py-32 bg-zinc-900/20 border-y border-zinc-900/50">
+          <div className="container px-6 mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-16">
+              {[
+                { title: 'Secure Sandbox', desc: 'Every skill executes in a restricted environment with fine-grained kernel permissions.' },
+                { title: 'Type Safe', desc: 'Full TypeScript definitions for every operation. No more guessing agent payloads.' },
+                { title: 'Provider Agnostic', desc: 'Swap between OpenAI, Anthropic, or local LLMs without rewriting a single integration.' }
+              ].map((feature, i) => (
+                <div key={i} className="flex flex-col">
+                  <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-indigo-500 mb-8 shadow-sm">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-lg font-medium text-white mb-4 tracking-tight">{feature.title}</h3>
+                  <p className="text-zinc-400 leading-relaxed text-sm">{feature.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* TESTIMONIAL */}
+        <section className="py-32">
+          <div className="container px-6 mx-auto">
+            <div className="max-w-4xl mx-auto text-center">
+              <div className="mb-12">
+                <img src={mainTestimonial.avatar} alt={mainTestimonial.name} className="w-16 h-16 rounded-full mx-auto border border-zinc-800 mb-6 shadow-xl" />
+                <div className="font-medium text-white">{mainTestimonial.name}</div>
+                <div className="text-zinc-500 text-sm">@{mainTestimonial.handle}</div>
+              </div>
+              <blockquote className="text-2xl md:text-4xl text-white font-medium tracking-tight leading-tight italic">
+                "{mainTestimonial.quote}"
+              </blockquote>
+            </div>
+          </div>
+        </section>
+
+        {/* FINAL CTA */}
+        <section className="py-48">
+          <div className="container px-6 mx-auto text-center">
+            <h2 className="text-4xl md:text-6xl font-semibold text-white mb-12 tracking-tight">Ready to augment <br /> your agents?</h2>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button asChild size="lg" className="h-14 px-10 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-medium transition-all shadow-lg shadow-indigo-600/20">
+                <Link href="/skills">Get Started for Free</Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="h-14 px-10 bg-transparent border-zinc-800 hover:border-zinc-600 text-white rounded-full font-medium transition-all">
+                <Link href="/onboarding">Sell Skills</Link>
+              </Button>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  );
+}
+=== ./src/app/onboarding/success/page.tsx ===
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+
+export default function OnboardingSuccessPage() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen py-12 px-4 text-center">
+      <h1 className="text-4xl font-bold mb-4">You're All Set!</h1>
+      <p className="text-xl text-gray-500 mb-8 max-w-2xl">
+        Your Stripe account has been connected. You can now start publishing your AI Agent skills to the marketplace.
+      </p>
+      <div className="flex gap-4">
+        <Button size="lg" asChild>
+          <Link href="/dashboard">Go to Dashboard</Link>
+        </Button>
+        <Button size="lg" variant="outline" asChild>
+          <Link href="/publish">Publish Your First Skill</Link>
+        </Button>
+      </div>
+    </div>
+  )
+}
+=== ./src/app/onboarding/page.tsx ===
+'use client'
+
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { useAuth, SignInButton } from '@clerk/nextjs'
+
+export default function OnboardingPage() {
+  const { isSignedIn } = useAuth()
+  const [loading, setLoading] = useState(false)
+
+  const handleConnectStripe = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch('/api/onboarding', { method: 'POST' })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Onboarding API failed:', errorText)
+        
+        let message = 'Onboarding failed.'
+        try {
+          const errorJson = JSON.parse(errorText)
+          message = errorJson.error || message
+        } catch (e) {
+          message = errorText || message
+        }
+        
+        alert(message)
+        setLoading(false)
+        return
+      }
+
+      const data = await response.json()
+      if (data.url) {
+        window.location.href = data.url
+      }
+    } catch (err) {
+      console.error('Onboarding error:', err)
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-16rem)] py-12 px-4 text-center">
+      <div className="bg-indigo-500/10 text-indigo-400 text-sm font-medium px-4 py-1.5 rounded-full mb-6 border border-indigo-500/20">
+        Developer Platform
+      </div>
+      <h1 className="text-4xl md:text-5xl font-extrabold mb-6 tracking-tight text-white">Simple pricing. Developers keep 70%.</h1>
+      <p className="text-xl text-gray-400 mb-10 max-w-2xl leading-relaxed">
+        Join 2,400+ developers publishing to the standard App Store for AI Agent Skills. 
+        We handle distribution, sandboxing, and payments so you can focus on writing great code.
+      </p>
+      {isSignedIn ? (
+        <Button size="lg" onClick={handleConnectStripe} disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 h-12 px-8 text-base">
+          {loading ? 'Connecting...' : 'Connect Stripe & Start Earning'}
+        </Button>
+      ) : (
+        <div className="space-y-6">
+          <SignInButton mode="modal">
+            <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 h-12 px-8 text-base">
+              Start earning. Publish your first skill free.
+            </Button>
+          </SignInButton>
+        </div>
+      )}
+    </div>
+  )
+}
+=== ./src/app/not-found.tsx ===
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { TerminalSquare } from 'lucide-react'
+
+export default function NotFound() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[70vh] px-4 text-center">
+      <div className="w-20 h-20 bg-gray-900 border border-gray-800 rounded-2xl flex items-center justify-center mb-8 relative">
+        <TerminalSquare className="w-10 h-10 text-gray-600" />
+        <div className="absolute -bottom-2 -right-2 text-3xl">🤔</div>
+      </div>
+      
+      <h2 className="text-3xl font-bold text-white mb-3 tracking-tight">404 - Skill Not Found</h2>
+      <p className="text-lg text-gray-400 mb-8 max-w-md">
+        This skill doesn't exist yet. Want to build it?
+      </p>
+      
+      <div className="flex flex-col sm:flex-row gap-4">
+        <Button asChild className="bg-indigo-600 hover:bg-indigo-700 h-12 px-8 text-base">
+          <Link href="/publish">Build & Publish</Link>
+        </Button>
+        <Button asChild variant="outline" className="bg-transparent border-gray-700 hover:bg-gray-800 h-12 px-8 text-base">
+          <Link href="/skills">Return to Marketplace</Link>
+        </Button>
+      </div>
+    </div>
+  )
+}
+=== ./src/utils/supabase/client.ts ===
+import { createBrowserClient } from '@supabase/ssr'
+
+export function createClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
+=== ./src/utils/supabase/server.ts ===
+import { createServerClient } from '@supabase/ssr'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
+
+export async function createClient(isAdmin = false) {
+  if (isAdmin) {
+    return createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+  }
+
+  const cookieStore = await cookies()
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // The `setAll` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+      },
+    }
+  )
+}
+=== ./src/components/waitlist/WaitlistForm.tsx ===
+'use client'
+
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+
+export function WaitlistForm() {
+  const [email, setEmail] = useState('')
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setStatus('loading')
+
+    try {
+      const response = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+
+      if (response.ok) {
+        setStatus('success')
+        setEmail('')
+      } else {
+        setStatus('error')
+      }
+    } catch (err) {
+      setStatus('error')
+    }
+  }
+
+  if (status === 'success') {
+    return (
+      <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
+        You're on the list! We'll be in touch soon.
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2 w-full max-w-md">
+      <Input
+        type="email"
+        placeholder="Enter your email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
+        disabled={status === 'loading'}
+        className="flex-1"
+      />
+      <Button type="submit" disabled={status === 'loading'}>
+        {status === 'loading' ? 'Joining...' : 'Join Waitlist'}
+      </Button>
+      {status === 'error' && (
+        <p className="text-red-500 text-sm mt-2 sm:mt-0 sm:absolute sm:-bottom-6">
+          Something went wrong. Please try again.
+        </p>
+      )}
+    </form>
+  )
+}
+=== ./src/components/ui/card.tsx ===
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+function Card({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card"
+      className={cn(
+        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-header"
+      className={cn(
+        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-title"
+      className={cn("leading-none font-semibold", className)}
+      {...props}
+    />
+  )
+}
+
+function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-description"
+      className={cn("text-muted-foreground text-sm", className)}
+      {...props}
+    />
+  )
+}
+
+function CardAction({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-action"
+      className={cn(
+        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardContent({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-content"
+      className={cn("px-6", className)}
+      {...props}
+    />
+  )
+}
+
+function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-footer"
+      className={cn("flex items-center px-6 [.border-t]:pt-6", className)}
+      {...props}
+    />
+  )
+}
+
+export {
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardAction,
+  CardDescription,
+  CardContent,
+}
+=== ./src/components/ui/badge.tsx ===
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+import { Slot } from "radix-ui"
+
+import { cn } from "@/lib/utils"
+
+const badgeVariants = cva(
+  "inline-flex items-center justify-center rounded-full border border-transparent px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
+        secondary:
+          "bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
+        destructive:
+          "bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+        outline:
+          "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+        ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 [a&]:hover:underline",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
+function Badge({
+  className,
+  variant = "default",
+  asChild = false,
+  ...props
+}: React.ComponentProps<"span"> &
+  VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
+  const Comp = asChild ? Slot.Root : "span"
+
+  return (
+    <Comp
+      data-slot="badge"
+      data-variant={variant}
+      className={cn(badgeVariants({ variant }), className)}
+      {...props}
+    />
+  )
+}
+
+export { Badge, badgeVariants }
+=== ./src/components/ui/button.tsx ===
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+import { Slot } from "radix-ui"
+
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive:
+          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+        outline:
+          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost:
+          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-9 px-4 py-2 has-[>svg]:px-3",
+        xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+        icon: "size-9",
+        "icon-xs": "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm": "size-8",
+        "icon-lg": "size-10",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+function Button({
+  className,
+  variant = "default",
+  size = "default",
+  asChild = false,
+  ...props
+}: React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean
+  }) {
+  const Comp = asChild ? Slot.Root : "button"
+
+  return (
+    <Comp
+      data-slot="button"
+      data-variant={variant}
+      data-size={size}
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  )
+}
+
+export { Button, buttonVariants }
+=== ./src/components/ui/input.tsx ===
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+  return (
+    <input
+      type={type}
+      data-slot="input"
+      className={cn(
+        "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+        "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+        "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export { Input }
+=== ./src/components/ui/CodeBlock.tsx ===
+'use client'
+
+import { useEffect, useState } from 'react'
+import { createHighlighter } from 'shiki'
+
+export function CodeBlock({ code, lang }: { code: string; lang: string }) {
+  const [html, setHtml] = useState('')
+
+  useEffect(() => {
+    let mounted = true
+    async function highlight() {
+      try {
+        const highlighter = await createHighlighter({
+          themes: ['github-dark'],
+          langs: ['bash', 'json', 'typescript', 'yaml'],
+        })
+        if (!mounted) return
+        const result = highlighter.codeToHtml(code, { 
+          lang, 
+          theme: 'github-dark' 
+        })
+        setHtml(result)
+      } catch (e) {
+        console.error('Failed to highlight code:', e)
+      }
+    }
+    highlight()
+    return () => { mounted = false }
+  }, [code, lang])
+
+  if (!html) {
+    return (
+      <pre className="bg-gray-900 p-4 rounded-lg overflow-x-auto text-sm animate-pulse text-gray-500">
+        Loading...
+      </pre>
+    )
+  }
+
+  return (
+    <div 
+      className="[&>pre]:!bg-gray-900 [&>pre]:p-4 [&>pre]:rounded-lg [&>pre]:overflow-x-auto [&>pre]:text-sm [&>pre]:border [&>pre]:border-gray-800"
+      dangerouslySetInnerHTML={{ __html: html }} 
+    />
+  )
+}
+=== ./src/components/layout/CookieBanner.tsx ===
+'use client'
+
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ShieldCheck, X } from 'lucide-react'
+
+export function CookieBanner() {
+  const [show, setShow] = useState(false)
+
+  useEffect(() => {
+    const consent = localStorage.getItem('helm-cookie-consent')
+    if (!consent) {
+      const timer = setTimeout(() => setShow(true), 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [])
+
+  if (!show) return null
+
+  const accept = () => {
+    localStorage.setItem('helm-cookie-consent', 'true')
+    setShow(false)
+  }
+
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div 
+          initial={{ opacity: 0, y: 50, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 20, scale: 0.95 }}
+          className="fixed bottom-24 right-4 left-4 md:left-auto md:w-[400px] bg-[#0c0c0e] border border-gray-800 p-6 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[100] backdrop-blur-xl"
+        >
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 bg-indigo-600/10 rounded-2xl flex items-center justify-center shrink-0 border border-indigo-500/20 text-indigo-400">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-black text-white uppercase text-[10px] tracking-widest">Privacy Preference</h3>
+                <button onClick={() => setShow(false)} className="text-gray-600 hover:text-white transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-sm text-gray-400 font-medium leading-relaxed mb-6">
+                We use strictly necessary cookies to ensure the platform functions securely. By continuing, you agree to our standard privacy protocols.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={accept} className="flex-1 h-11 bg-white text-black hover:bg-gray-200 rounded-xl font-black text-xs uppercase tracking-widest transition-all">
+                  Accept All
+                </button>
+                <button onClick={accept} className="flex-1 h-11 bg-gray-900 text-gray-400 hover:text-white border border-gray-800 rounded-xl font-black text-xs uppercase tracking-widest transition-all">
+                  Manage
+                </button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+=== ./src/components/layout/MobileNav.tsx ===
+'use client'
+
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { Home, Search, LayoutDashboard, PlusCircle } from 'lucide-react'
+import { motion } from 'framer-motion'
+
+export function MobileNav() {
+  const pathname = usePathname()
+  
+  const navItems = [
+    { name: 'Home', href: '/', icon: Home },
+    { name: 'Market', href: '/skills', icon: Search },
+    { name: 'Publish', href: '/publish', icon: PlusCircle },
+    { name: 'Console', href: '/dashboard', icon: LayoutDashboard },
+  ]
+
+  return (
+    <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-gray-800 bg-black/80 backdrop-blur-xl z-[90] px-6 py-3 flex justify-between items-center pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+      {navItems.map((item) => {
+        const isActive = pathname === item.href
+        return (
+          <Link 
+            key={item.name} 
+            href={item.href}
+            className={`flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-indigo-400' : 'text-gray-500 hover:text-gray-300'}`}
+          >
+            <div className="relative">
+              <item.icon className={`w-6 h-6 ${isActive ? 'scale-110' : ''} transition-transform duration-300`} />
+              {isActive && (
+                <motion.div 
+                  layoutId="mobileNavDot"
+                  className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.8)]" 
+                />
+              )}
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest">{item.name}</span>
+          </Link>
+        )
+      })}
+    </div>
+  )
+}
+=== ./src/components/layout/Footer.tsx ===
+import Link from "next/link";
+
+export function Footer() {
+  const links = [
+    { label: 'Marketplace', href: '/skills' },
+    { label: 'Publish', href: '/onboarding' },
+    { label: 'Dashboard', href: '/dashboard' },
+    { label: 'Docs', href: '#' },
+    { label: 'Twitter', href: '#' },
+    { label: 'GitHub', href: '#' }
+  ]
+
+  return (
+    <footer className="w-full py-24 bg-[#0a0a0a] border-t border-zinc-900/50 text-zinc-500">
+      <div className="container px-6 mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-24">
+          <div className="max-w-xs">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-6 h-6 bg-zinc-800 rounded flex items-center justify-center">
+                <div className="w-3 h-3 bg-zinc-400 rounded-sm" />
+              </div>
+              <span className="font-semibold text-white tracking-tight">Helm Market</span>
+            </div>
+            <p className="text-sm leading-relaxed">
+              The capabilites infrastructure for autonomous agents. Built on open standards.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-16 gap-y-8">
+            {links.map(link => (
+              <Link key={link.label} href={link.href} className="text-sm font-medium hover:text-white transition-colors">
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6 pt-12 border-t border-zinc-900 text-xs font-medium uppercase tracking-widest text-zinc-600">
+          <p>© 2024 Helm Market by Skilld.</p>
+          <div className="flex items-center gap-8">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+              Operational
+            </div>
+            <Link href="#" className="hover:text-zinc-400 transition-colors">Privacy</Link>
+            <Link href="#" className="hover:text-zinc-400 transition-colors">Terms</Link>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}
+=== ./src/components/layout/Header.tsx ===
+'use client'
+
+import Link from "next/link";
+import Image from "next/image";
+import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { Button } from "@/components/ui/button";
+
+export function Header() {
+  return (
+    <header className="fixed top-0 left-0 right-0 z-[100] h-16 border-b border-zinc-800/50 bg-black/50 backdrop-blur-xl">
+      <div className="container px-6 mx-auto h-full flex items-center justify-between">
+        <Link className="flex items-center gap-2.5 transition-opacity hover:opacity-90" href="/">
+          <Image 
+            src="/logo-mark.svg" 
+            alt="Helm Market Logo" 
+            width={24} 
+            height={24} 
+            className="rounded shadow-sm"
+          />
+          <span className="font-semibold text-lg text-white tracking-tight">Helm Market</span>
+        </Link>
+        
+        <nav className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
+          <Link className="text-sm font-medium text-zinc-400 hover:text-white transition-colors" href="/skills">
+            Marketplace
+          </Link>
+          <Link className="text-sm font-medium text-zinc-400 hover:text-white transition-colors" href="/onboarding">
+            Developers
+          </Link>
+          <Link className="text-sm font-medium text-zinc-400 hover:text-white transition-colors" href="#">
+            Docs
+          </Link>
+        </nav>
+
+        <div className="flex items-center gap-4">
+          <SignedOut>
+            <SignInButton mode="modal">
+              <Button size="sm" className="bg-white text-black hover:bg-zinc-200 h-9 px-4 rounded-full font-medium text-sm transition-all active:scale-95">
+                Sign In
+              </Button>
+            </SignInButton>
+          </SignedOut>
+          <SignedIn>
+            <Link href="/dashboard" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors mr-2">
+              Console
+            </Link>
+            <UserButton 
+              afterSignOutUrl="/" 
+              appearance={{ 
+                elements: { 
+                  avatarBox: "w-8 h-8 rounded-full border border-zinc-800",
+                  userButtonPopoverCard: "bg-zinc-900 border border-zinc-800 rounded-xl"
+                } 
+              }} 
+            />
+          </SignedIn>
+        </div>
+      </div>
+    </header>
+  );
+}
+=== ./src/components/publish/SkillSubmissionForm.tsx ===
+'use client'
+
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Info, ShieldCheck } from 'lucide-react'
+import { motion } from 'framer-motion'
+
+export function SkillSubmissionForm() {
+  const [formData, setFormData] = useState({
+    name: '',
+    slug: '',
+    description: '',
+    price_cents: 0,
+    registry_endpoint: '',
+    config: '',
+    permissions: [] as string[],
+    tags: [] as string[],
+    category: 'general',
+    providers: ['openai'] as string[],
+    provider_switchable: false,
+    compliance_labels: [] as string[]
+  })
+  
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
+  const [currentTag, setCurrentTag] = useState('')
+
+  const availablePermissions = ['internet-access', 'read-files', 'write-files', 'execute-scripts', 'user-identity']
+  const availableProviders = [
+    { id: 'openai', name: 'OpenAI' },
+    { id: 'gemini', name: 'Gemini' },
+    { id: 'anthropic', name: 'Anthropic' },
+    { id: 'llama', name: 'Llama' },
+    { id: 'custom', name: 'Custom/Self-hosted' }
+  ]
+  const availableCategories = [
+    { id: 'general', name: 'General 🔧' },
+    { id: 'security', name: 'Security 🔒' },
+    { id: 'compliance', name: 'Compliance ✅' },
+    { id: 'energy-industrial', name: 'Energy ⚡' },
+    { id: 'data-analytics', name: 'Analytics 📊' },
+    { id: 'automation', name: 'Automation 🤖' }
+  ]
+  const availableCompliance = ['EU_AI_ACT', 'US_FEDERAL', 'GDPR', 'SOC2', 'ISO27001']
+
+  const handleToggle = (field: 'permissions' | 'providers' | 'compliance_labels', value: string) => {
+    setFormData(prev => {
+      if (field === 'providers' && !prev.provider_switchable) {
+        // If not switchable, it's a single select
+        return { ...prev, [field]: [value] }
+      }
+      return {
+        ...prev,
+        [field]: prev[field].includes(value) 
+          ? prev[field].filter(v => v !== value) 
+          : [...prev[field], value]
+      }
+    })
+  }
+
+  const handleProviderSwitchableToggle = () => {
+    setFormData(prev => {
+      const isSwitchable = !prev.provider_switchable;
+      // If switching to non-switchable, keep only the first provider if multiple were selected
+      const providers = (!isSwitchable && prev.providers.length > 1) 
+        ? [prev.providers[0]] 
+        : prev.providers;
+      
+      return { ...prev, provider_switchable: isSwitchable, providers }
+    })
+  }
+
+  const handleAddTag = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && currentTag.trim()) {
+      e.preventDefault()
+      if (!formData.tags.includes(currentTag.trim())) {
+        setFormData(prev => ({ ...prev, tags: [...prev.tags, currentTag.trim()] }))
+      }
+      setCurrentTag('')
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setStatus('submitting')
+
+    try {
+      const response = await fetch('/api/skills', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      })
+
+      if (response.ok) {
+        setStatus('success')
+      } else {
+        setStatus('error')
+      }
+    } catch (err) {
+      setStatus('error')
+    }
+  }
+
+  if (status === 'success') {
+    return (
+      <div className="text-center py-20 bg-emerald-500/5 rounded-[2.5rem] border border-emerald-500/20">
+        <div className="w-20 h-20 bg-emerald-500/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
+          <ShieldCheck className="w-10 h-10 text-emerald-500" />
+        </div>
+        <h2 className="text-3xl font-black text-white tracking-tighter">Skill Submitted!</h2>
+        <p className="mt-4 text-gray-400 font-medium max-w-sm mx-auto">Your skill is now pending review. Our engineers will verify the sandbox integrity and notify you once it's live.</p>
+        <Button variant="outline" className="mt-10 border-gray-800 text-gray-300 hover:bg-gray-800" onClick={() => setStatus('idle')}>Submit Another</Button>
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-12 max-w-3xl mx-auto pb-20">
+      <div className="space-y-6">
+        <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-xs">1</div>
+          Basic Information
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-xs font-black text-gray-500 uppercase tracking-widest px-1">Skill Name</label>
+            <Input 
+              placeholder="e.g. Data Analyzer Pro" 
+              value={formData.name} 
+              onChange={e => setFormData(prev => ({ ...prev, name: e.target.value, slug: e.target.value.toLowerCase().replace(/\s/g, '-') }))} 
+              required 
+              className="bg-gray-900/50 border-gray-800 h-12 rounded-xl"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-black text-gray-500 uppercase tracking-widest px-1">Marketplace Slug</label>
+            <Input 
+              placeholder="e.g. data-analyzer" 
+              value={formData.slug} 
+              onChange={e => setFormData(prev => ({ ...prev, slug: e.target.value }))} 
+              required 
+              className="bg-gray-900/50 border-gray-800 h-12 rounded-xl"
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-black text-gray-500 uppercase tracking-widest px-1">Category</label>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {availableCategories.map(cat => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, category: cat.id }))}
+                className={`px-4 py-3 rounded-xl border text-sm font-bold transition-all ${
+                  formData.category === cat.id 
+                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/20' 
+                    : 'bg-gray-900/50 border-gray-800 text-gray-400 hover:border-gray-700'
+                }`}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-black text-gray-500 uppercase tracking-widest px-1">Description</label>
+          <textarea 
+            placeholder="Describe what your skill does and how it helps developers..." 
+            className="flex min-h-[120px] w-full rounded-2xl border border-gray-800 bg-gray-900/50 px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+            value={formData.description}
+            onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            required
+          />
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-xs">2</div>
+          Provider Configuration
+        </h2>
+        <div className="space-y-4">
+          <label className="text-xs font-black text-gray-500 uppercase tracking-widest px-1">
+            {formData.provider_switchable ? 'Supported AI Providers (Multi-select)' : 'Fixed AI Provider (Single-select)'}
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {availableProviders.map(provider => (
+              <Badge 
+                key={provider.id} 
+                variant={formData.providers.includes(provider.id) ? 'default' : 'outline'}
+                className="cursor-pointer py-2 px-4 rounded-xl text-xs font-bold border-gray-800"
+                onClick={() => handleToggle('providers', provider.id)}
+              >
+                {provider.name}
+              </Badge>
+            ))}
+          </div>
+        </div>
+        <div className="p-6 bg-indigo-900/10 border border-indigo-500/20 rounded-3xl flex items-center justify-between">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 bg-indigo-600/20 rounded-xl flex items-center justify-center shrink-0">
+              <Zap className="w-5 h-5 text-indigo-400" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">Provider Switchable</p>
+              <p className="text-xs text-gray-500 mt-1">Allow buyers to choose their own AI backend at install time.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleProviderSwitchableToggle}
+            className={`w-12 h-6 rounded-full relative transition-colors ${formData.provider_switchable ? 'bg-indigo-600' : 'bg-gray-800'}`}
+          >
+            <motion.div 
+              animate={{ x: formData.provider_switchable ? 26 : 2 }}
+              className="absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow-sm" 
+            />
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-xs">3</div>
+          Compliance & Security
+        </h2>
+        <div className="space-y-4">
+          <label className="text-xs font-black text-gray-500 uppercase tracking-widest px-1">Permissions Declaration</label>
+          <div className="flex flex-wrap gap-2">
+            {availablePermissions.map(perm => (
+              <Badge 
+                key={perm} 
+                variant={formData.permissions.includes(perm) ? 'default' : 'outline'}
+                className="cursor-pointer py-2 px-4 rounded-xl text-xs font-bold border-gray-800"
+                onClick={() => handleToggle('permissions', perm)}
+              >
+                {perm}
+              </Badge>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-4 pt-4">
+          <label className="text-xs font-black text-gray-500 uppercase tracking-widest px-1">Compliance Certifications (Self-Declared)</label>
+          <div className="flex flex-wrap gap-2">
+            {availableCompliance.map(label => (
+              <Badge 
+                key={label} 
+                variant={formData.compliance_labels.includes(label) ? 'default' : 'outline'}
+                className={`cursor-pointer py-2 px-4 rounded-xl text-xs font-bold border-gray-800 ${
+                  formData.compliance_labels.includes(label) ? 'bg-emerald-600 border-emerald-500' : ''
+                }`}
+                onClick={() => handleToggle('compliance_labels', label)}
+              >
+                {label}
+              </Badge>
+            ))}
+          </div>
+          <p className="text-[10px] text-gray-600 font-bold uppercase tracking-tighter px-1 italic flex items-center gap-1.5">
+            <Info className="w-3 h-3" /> These labels are self-declared. Helm Market reserves the right to verify and remove inaccurate labels.
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-xs">4</div>
+          Metadata & Registry
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-xs font-black text-gray-500 uppercase tracking-widest px-1">Price (Cents)</label>
+            <Input 
+              type="number" 
+              placeholder="e.g. 19900 for $199.00" 
+              value={formData.price_cents} 
+              onChange={e => setFormData(prev => ({ ...prev, price_cents: parseInt(e.target.value) }))} 
+              required 
+              className="bg-gray-900/50 border-gray-800 h-12 rounded-xl"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-black text-gray-500 uppercase tracking-widest px-1">Registry Endpoint</label>
+            <Input 
+              placeholder="e.g. @helm-market/analyzer" 
+              value={formData.registry_endpoint} 
+              onChange={e => setFormData(prev => ({ ...prev, registry_endpoint: e.target.value }))} 
+              required 
+              className="bg-gray-900/50 border-gray-800 h-12 rounded-xl font-mono text-xs"
+            />
+          </div>
+        </div>
+        <div className="space-y-2 pt-4">
+          <label className="text-xs font-black text-gray-500 uppercase tracking-widest px-1 flex items-center justify-between">
+            <span>helm.config.json (Optional, required for MCP)</span>
+            <span className="text-[10px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded uppercase">JSON</span>
+          </label>
+          <textarea 
+            placeholder='{ "name": "my-skill", "operations": [...] }' 
+            className="flex min-h-[150px] w-full rounded-2xl border border-gray-800 bg-gray-900/50 px-4 py-3 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+            value={formData.config}
+            onChange={e => setFormData(prev => ({ ...prev, config: e.target.value }))}
+          />
+        </div>
+      </div>
+
+      <Button type="submit" size="lg" className="w-full h-16 text-xl bg-white text-black hover:bg-gray-200 rounded-2xl font-black shadow-2xl transition-all active:scale-[0.98]" disabled={status === 'submitting'}>
+        {status === 'submitting' ? 'Verifying Integrity...' : 'Submit Skill for Review'}
+      </Button>
+    </form>
+  )
+}
+
+function Zap(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 14.71 12 2.5l1.54 10.29H20L12 21.5l-1.54-10.29H4Z" />
+    </svg>
+  )
+}
+=== ./src/components/skills/SkillDetailClient.tsx ===
+'use client'
+
+import { useState } from 'react'
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from 'recharts'
+import { 
+  placeholderReviews, reviewStats, chartData, Skill
+} from '@/lib/placeholder-data'
+import { Info, BarChart3, MessageSquare, Zap } from 'lucide-react'
+import { CodeBlock } from '@/components/ui/CodeBlock'
+import { motion, AnimatePresence } from 'framer-motion'
+
+export function SkillDetailClient({ skill }: { skill: Skill }) {
+  const [activeTab, setActiveTab] = useState('overview')
+
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: Info },
+    { id: 'operations', label: 'Operations', icon: Zap },
+    { id: 'reviews', label: 'Reviews', icon: MessageSquare },
+    { id: 'usage', label: 'Usage', icon: BarChart3 }
+  ]
+
+  const installCommand = `helm install ${skill.registry_endpoint || `@helm-market/${skill.slug}`}`;
+
+  return (
+    <div className="space-y-12">
+      <div className="flex border-b border-zinc-800 overflow-x-auto no-scrollbar">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 whitespace-nowrap px-8 py-4 text-sm font-medium transition-all border-b-2 -mb-px ${
+              activeTab === tab.id 
+                ? 'border-white text-white' 
+                : 'border-transparent text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="min-h-[400px]">
+        <AnimatePresence mode="wait">
+          {activeTab === 'overview' && (
+            <motion.div 
+              key="overview"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-16"
+            >
+              <div className="prose prose-zinc prose-invert max-w-none">
+                <h3 className="text-xl font-medium text-white mb-6">About this skill</h3>
+                <p className="text-zinc-400 text-lg leading-[1.8]">
+                  Production-ready agent capability optimized for industrial environments. 
+                  Fully typed and executes in an isolated sandbox with zero-trust security.
+                </p>
+                
+                <h4 className="text-base font-medium text-white mt-12 mb-6 tracking-tight">Quick Start</h4>
+                <div className="not-prose">
+                  <CodeBlock code={installCommand} lang="bash" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-zinc-900 pt-16">
+                <div className="p-8 bg-zinc-900 border border-zinc-800 rounded-2xl">
+                  <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-8">Infrastructure</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {skill.providers.map(p => (
+                      <span key={p} className="px-3 py-1 bg-zinc-800 rounded-full text-[11px] text-zinc-300 font-bold border border-zinc-700 uppercase tracking-tighter">
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-8 bg-zinc-900 border border-zinc-800 rounded-2xl">
+                  <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-8">Environment</h4>
+                  <div className="space-y-4 text-sm font-medium">
+                    <div className="flex justify-between border-b border-zinc-800 pb-2">
+                      <span className="text-zinc-500">Node.js</span>
+                      <span className="text-white">18+</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Helm SDK</span>
+                      <span className="text-white">0.2.0+</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'operations' && (
+            <motion.div 
+              key="operations"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="border border-zinc-800 rounded-2xl overflow-hidden"
+            >
+              <table className="w-full text-left text-sm">
+                <thead className="bg-zinc-900 border-b border-zinc-800 text-zinc-500 font-medium">
+                  <tr>
+                    <th className="p-8">Operation</th>
+                    <th className="p-8">Permission</th>
+                    <th className="p-8">Description</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800 text-zinc-300">
+                  {[
+                    { name: 'execute', perm: 'allow', desc: 'Main logic execution. Fully isolated.' },
+                    { name: 'notify', perm: 'ask', desc: 'External notifications. Requires explicit approval.' }
+                  ].map((op) => (
+                    <tr key={op.name} className="hover:bg-zinc-900/50 transition-colors">
+                      <td className="p-8 font-mono text-indigo-400 font-bold">{op.name}</td>
+                      <td className="p-8">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase border tracking-widest ${
+                          op.perm === 'allow' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        }`}>
+                          {op.perm}
+                        </span>
+                      </td>
+                      <td className="p-8 text-zinc-500 font-medium leading-relaxed">{op.desc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </motion.div>
+          )}
+
+          {activeTab === 'reviews' && (
+            <motion.div 
+              key="reviews"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-16"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-12 border-b border-zinc-900 pb-16">
+                <div className="text-center p-8 bg-zinc-900 border border-zinc-800 rounded-3xl">
+                  <div className="text-6xl font-semibold text-white mb-2 tracking-tighter">{reviewStats.average}</div>
+                  <p className="text-zinc-500 text-sm font-medium uppercase tracking-widest mb-10">{reviewStats.total} reviews</p>
+                  <div className="space-y-4">
+                    {reviewStats.breakdown.map(b => (
+                      <div key={b.stars} className="flex items-center gap-4 text-[10px] font-bold">
+                        <span className="w-4 text-zinc-500">{b.stars}★</span>
+                        <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${b.percentage}%` }}
+                            className="h-full bg-zinc-400" 
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="md:col-span-2 space-y-12">
+                  {placeholderReviews.slice(0, 3).map(r => (
+                    <div key={r.id} className="pb-12 border-b border-zinc-900 last:border-0 last:pb-0">
+                      <div className="flex items-center gap-4 mb-6">
+                        <img src={r.avatar} alt={r.user} className="w-10 h-10 rounded-full grayscale border border-zinc-800" />
+                        <div>
+                          <p className="text-base font-medium text-white">{r.user}</p>
+                          <p className="text-xs text-zinc-500 font-medium">{r.date}</p>
+                        </div>
+                      </div>
+                      <p className="text-zinc-400 leading-[1.8] text-lg italic">"{r.text}"</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'usage' && (
+            <motion.div 
+              key="usage"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-12"
+            >
+              <div className="h-[400px] w-full p-10 bg-zinc-900 border border-zinc-800 rounded-3xl">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData.installs}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1f1f23" vertical={false} />
+                    <XAxis dataKey="name" stroke="#52525b" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} />
+                    <YAxis stroke="#52525b" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#09090b', borderColor: '#27272a', borderRadius: '16px', fontWeight: 'bold' }}
+                    />
+                    <Area type="monotone" dataKey="installs" stroke="#6366f1" strokeWidth={3} fill="#6366f1" fillOpacity={0.05} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  )
+}
+=== ./src/components/skills/SkillCard.tsx ===
+'use client'
+
+import Link from 'next/link'
+import { Card } from '@/components/ui/card'
+import { Star, ShieldCheck, Zap } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Skill } from '@/lib/placeholder-data'
+
+export function SkillCard({ skill, index = 0 }: { skill: Skill, index?: number }) {
+  const price = (skill.price_cents / 100).toFixed(2)
+  
+  // Deterministic fake data
+  const baseValue = (skill.slug.length * 13) + (index * 7);
+  const rating = 4.5 + ((baseValue % 5) / 10);
+  const reviewCount = 40 + (baseValue % 200);
+  
+  const authorName = (skill.developers?.users?.full_name || 'Verified').split(' ')[0];
+  const authorHandle = `@${authorName.toLowerCase()}`;
+
+  const categoryLabels: Record<string, string> = {
+    'security': 'Security',
+    'compliance': 'Compliance',
+    'energy-industrial': 'Energy',
+    'data-analytics': 'Analytics',
+    'automation': 'Automation',
+    'general': 'General',
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: (index % 6) * 0.05, duration: 0.4 }}
+      className="h-full"
+    >
+      <Link href={`/skills/${skill.slug}`} className="block h-full group">
+        <Card className="h-full min-h-[280px] flex flex-col p-6 bg-zinc-900 border-zinc-800 rounded-2xl hover:border-zinc-600 transition-all duration-300 shadow-none">
+          <div className="flex justify-between items-start mb-6">
+            <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
+              <Zap className="w-5 h-5 fill-current" />
+            </div>
+            <div className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
+              {categoryLabels[skill.category]}
+            </div>
+          </div>
+
+          <div className="flex-1">
+            <h3 className="text-lg font-medium text-white mb-2 group-hover:text-indigo-400 transition-colors">
+              {skill.name}
+            </h3>
+            <p className="text-sm text-zinc-400 line-clamp-2 leading-relaxed">
+              {skill.description}
+            </p>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-zinc-800 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1 text-xs font-medium text-zinc-400">
+                <Star className="w-3.5 h-3.5 text-amber-500 fill-current" />
+                <span>{rating.toFixed(1)}</span>
+                <span className="text-zinc-600">({reviewCount})</span>
+              </div>
+              <div className="flex items-center gap-1 text-zinc-600">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-bold uppercase tracking-tighter">{authorHandle}</span>
+              </div>
+            </div>
+            <div className="text-sm font-semibold text-white">
+              ${price}
+            </div>
+          </div>
+        </Card>
+      </Link>
+    </motion.div>
+  )
+}
+=== ./src/scripts/test_publish_flow.ts ===
+async function testPublish() {
+  const url = 'http://localhost:4000/api/skills';
+  const userId = 'user_3AIVQi8ooSoBVmHK6jT14jaxkA8'; // From check_devs.ts
+  const payload = {
+    name: 'Test Skill Bridge',
+    slug: 'test-skill-bridge',
+    description: 'A test skill for verifying the publishing flow',
+    price_cents: 1000,
+    registry_endpoint: '@helm-market/test-bridge',
+    config: JSON.stringify({
+      name: 'Test Skill Bridge',
+      operations: [
+        { name: 'hello', description: 'Say hello', parameters: { name: { type: 'string' } } }
+      ]
+    }),
+    permissions: ['internet-access'],
+    tags: ['test', 'mcp']
+  };
+
+  console.log(`Sending publish request to ${url}...`);
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    console.log('Response status:', response.status);
+    console.log('Response body:', JSON.stringify(data, null, 2));
+    
+    if (response.ok) {
+       console.log('Skill published successfully (at least via API).');
+    } else {
+       console.error('Skill publication failed.');
+    }
+  } catch (err) {
+    console.error('Test failed:', err);
+  }
+}
+
+testPublish();
+=== ./src/scripts/check_schema.ts ===
+import { createClient } from '@supabase/supabase-js'
+import * as dotenv from 'dotenv'
+dotenv.config({ path: '.env.local' })
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+async function checkSchema() {
+  const { data: skills, error } = await supabase.from('skills').select('*').limit(1)
+  if (error) {
+    console.error('Error fetching skills:', error)
+    return
+  }
+  if (skills && skills.length > 0) {
+    console.log('Columns in skills table:', Object.keys(skills[0]))
+  } else {
+    console.log('No skills found in table.')
+  }
+}
+
+checkSchema()
+=== ./src/scripts/reset_dev.ts ===
+import { createClient } from '@supabase/supabase-js'
+import * as dotenv from 'dotenv'
+dotenv.config({ path: '.env.local' })
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string)
+
+async function resetDeveloperAccount() {
+  const userId = 'user_3AIVQi8ooSoBVmHK6jT14jaxkA8'
+  console.log(`Resetting developer Stripe ID for user: ${userId}...`)
+  
+  const { error } = await supabase
+    .from('developers')
+    .update({ stripe_account_id: null })
+    .eq('id', userId)
+
+  if (error) {
+    console.error('Error resetting developer:', error)
+  } else {
+    console.log('Stripe ID cleared! You can now create a new account via the UI.')
+  }
+}
+
+resetDeveloperAccount()
+=== ./src/scripts/seed.ts ===
+import { createClient } from '@supabase/supabase-js'
+import * as dotenv from 'dotenv'
+
+dotenv.config({ path: '.env.local' })
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Missing Supabase environment variables!')
+  process.exit(1)
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey)
+
+async function seed() {
+  console.log('Seeding categories...')
+  const { error } = await supabase.from('categories').upsert([
+    { name: 'Productivity', slug: 'productivity', description: 'Skills that help you get more done.' },
+    { name: 'Finance', slug: 'finance', description: 'Tools for analyzing and managing money.' },
+    { name: 'DevOps', slug: 'devops', description: 'Automations for deployments and infrastructure.' },
+    { name: 'Entertainment', slug: 'entertainment', description: 'Skills for games, music and fun.' }
+  ], { onConflict: 'slug' })
+
+  if (error) {
+    console.error('Error seeding categories:', error)
+  } else {
+    console.log('Categories seeded successfully!')
+  }
+}
+
+seed()
+=== ./src/scripts/seed_mcp_skills.ts ===
+import { createClient } from '@supabase/supabase-js'
+import * as dotenv from 'dotenv'
+dotenv.config({ path: '.env.local' })
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+async function seedMcpSkills() {
+  console.log('Seeding MCP Sample Skills...')
+  
+  const { data: categories } = await supabase.from('categories').select('id').eq('slug', 'finance').single()
+  const catId = categories?.id
+
+  const { error } = await supabase.from('skills').upsert([
+    { 
+      name: 'Simple Price Skill', 
+      slug: 'simple-skill', 
+      description: 'A simple skill to fetch asset prices.',
+      price_cents: 1000,
+      status: 'published',
+      developer_id: 'user_3AIVQi8ooSoBVmHK6jT14jaxkA8',
+      category_id: catId,
+      permissions: ['internet-access'],
+      tags: ['finance', 'mcp'],
+      config: {
+        name: 'Simple Price Skill',
+        version: '1.0.0',
+        description: 'Asset price fetcher',
+        operations: [
+          {
+            name: 'getPrice',
+            description: 'Get current price for a symbol',
+            parameters: {
+              symbol: { type: 'string', description: 'The ticker symbol (e.g. AAPL)' }
+            }
+          }
+        ]
+      }
+    }
+  ], { onConflict: 'slug' })
+
+  if (error) console.error('Error seeding MCP skills:', error)
+  else console.log('MCP Skills seeded successfully!')
+}
+
+seedMcpSkills()
+=== ./src/scripts/run_sql.ts ===
+import { createClient } from '@supabase/supabase-js'
+import * as dotenv from 'dotenv'
+dotenv.config({ path: '.env.local' })
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+async function runSql() {
+  const sql = `ALTER TABLE public.skills ADD COLUMN IF NOT EXISTS config JSONB DEFAULT '{}';`;
+  console.log(`Trying to run SQL: ${sql}`);
+  const { data, error } = await supabase.rpc('exec_sql', { sql_query: sql });
+  if (error) {
+    console.error('Error running SQL via RPC:', error);
+    return;
+  }
+  console.log('SQL ran successfully!');
+}
+
+runSql();
+=== ./src/scripts/verify_manifests.ts ===
+// Self-contained verification script to avoid ESM import issues with ts-node
+export interface HelmOperation {
+  name: string;
+  description: string;
+  parameters: Record<string, any>;
+}
+
+export interface HelmConfig {
+  name: string;
+  version?: string;
+  description?: string;
+  operations: HelmOperation[];
+}
+
+export function translateToMCPManifest(config: HelmConfig, slug: string) {
+  return {
+    mcpVersion: "1.0.0",
+    server: {
+      name: config.name,
+      version: config.version || "0.1.0",
+      description: config.description || `MCP Server for ${config.name}`
+    },
+    tools: config.operations.map(op => ({
+      name: op.name,
+      description: op.description,
+      inputSchema: {
+        type: "object",
+        properties: op.parameters || {},
+        required: Object.keys(op.parameters || {})
+      }
+    }))
+  };
+}
+
+const sample1: HelmConfig = {
+  name: "Simple Skill",
+  version: "1.0.0",
+  description: "A simple price fetcher",
+  operations: [
+    {
+      name: "getPrice",
+      description: "Get current price for a symbol",
+      parameters: {
+        symbol: { type: "string", description: "The ticker symbol" }
+      }
+    }
+  ]
+};
+
+const sample2: HelmConfig = {
+  name: "Mixed Permissions Skill",
+  version: "0.1.0",
+  description: "Skill with different operation types",
+  operations: [
+    {
+      name: "readPublicData",
+      description: "Always allowed (allow)",
+      parameters: { id: { type: "string" } }
+    },
+    {
+      name: "deleteUserData",
+      description: "Requires confirmation (ask)",
+      parameters: { userId: { type: "string" } }
+    },
+    {
+      name: "internalReset",
+      description: "Restricted operation (deny)",
+      parameters: { secret: { type: "string" } }
+    }
+  ]
+};
+
+const sample3: HelmConfig = {
+  name: "Nested Skill",
+  version: "2.0.0",
+  operations: [
+    {
+      name: "complexAction",
+      description: "Operation with nested parameters",
+      parameters: {
+        user: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            profile: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                age: { type: "number" }
+              }
+            }
+          }
+        },
+        tags: {
+          type: "array",
+          items: { type: "string" }
+        }
+      }
+    }
+  ]
+};
+
+function verify(name: string, config: HelmConfig) {
+  console.log(`--- Verifying ${name} ---`);
+  const manifest = translateToMCPManifest(config, name.toLowerCase().replace(/ /g, '-'));
+  console.log(JSON.stringify(manifest, null, 2));
+  console.log("\n");
+}
+
+verify("Simple Skill", sample1);
+verify("Mixed Permissions Skill", sample2);
+verify("Nested Skill", sample3);
+=== ./src/scripts/check_devs.ts ===
+import { createClient } from '@supabase/supabase-js'
+import * as dotenv from 'dotenv'
+dotenv.config({ path: '.env.local' })
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+async function checkDevs() {
+  const { data, error } = await supabase.from('developers').select('*')
+  if (error) {
+    console.error('Error fetching developers:', error)
+  } else {
+    console.log('Developers found:', data.length)
+    console.log(JSON.stringify(data, null, 2))
+  }
+}
+
+checkDevs()
+=== ./src/scripts/seed_skills.ts ===
+import { createClient } from '@supabase/supabase-js'
+import * as dotenv from 'dotenv'
+dotenv.config({ path: '.env.local' })
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+async function seedSkills() {
+  console.log('Seeding Sample Skills...')
+  
+  // Get the category ID for Productivity
+  const { data: categories } = await supabase.from('categories').select('id').eq('slug', 'productivity').single()
+  const catId = categories?.id
+
+  const { error } = await supabase.from('skills').upsert([
+    { 
+      name: 'Data Analyzer Pro', 
+      slug: 'data-analyzer-pro', 
+      description: 'An advanced AI skill that can process CSV files and generate insights automatically.',
+      price_cents: 2900,
+      status: 'published',
+      developer_id: 'user_3AIVQi8ooSoBVmHK6jT14jaxkA8', // Deine ID
+      category_id: catId,
+      permissions: ['read-files', 'internet-access'],
+      tags: ['data', 'analysis', 'automation']
+    },
+    { 
+      name: 'Email Architect', 
+      slug: 'email-architect', 
+      description: 'Drafts professional emails based on brief notes and learns your personal writing style.',
+      price_cents: 1500,
+      status: 'published',
+      developer_id: 'user_3AIVQi8ooSoBVmHK6jT14jaxkA8',
+      category_id: catId,
+      permissions: ['user-identity'],
+      tags: ['email', 'productivity', 'writing']
+    }
+  ], { onConflict: 'slug' })
+
+  if (error) console.error('Error seeding skills:', error)
+  else console.log('Skills seeded successfully!')
+}
+
+seedSkills()
+=== ./src/scripts/test_mcp_bridge.ts ===
+async function testBridge() {
+  const url = 'http://localhost:4000/api/mcp/simple-skill/execute';
+  const payload = {
+    toolName: 'getPrice',
+    arguments: { symbol: 'AAPL' }
+  };
+
+  console.log(`Sending request to ${url}...`);
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer test-install-token'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const text = await response.text();
+    console.log('Response status:', response.status);
+    console.log('Response body:', text);
+    if (response.headers.get('content-type')?.includes('application/json')) {
+      console.log('Parsed JSON:', JSON.parse(text));
+    }
+  } catch (err) {
+    console.error('Test failed:', err);
+  }
+}
+
+testBridge();
+=== ./src/scripts/check_skills.ts ===
+import { createClient } from '@supabase/supabase-js'
+import * as dotenv from 'dotenv'
+dotenv.config({ path: '.env.local' })
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+async function checkSkills() {
+  const { data: skills, error } = await supabase.from('skills').select('slug, config')
+  if (error) {
+    console.error('Error fetching skills:', error)
+    return
+  }
+  console.log('--- Skills Configs ---')
+  skills.forEach(s => {
+    console.log(`Slug: ${s.slug}`)
+    console.log(`Config: ${JSON.stringify(s.config, null, 2)}`)
+    console.log('---')
+  })
+}
+
+checkSkills()
+=== ./src/scripts/check_users.ts ===
+import { createClient } from '@supabase/supabase-js'
+import * as dotenv from 'dotenv'
+dotenv.config({ path: '.env.local' })
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+async function checkUsers() {
+  const { data, error } = await supabase.from('users').select('*')
+  if (error) {
+    console.error('Error fetching users:', error)
+  } else {
+    console.log('Users found:', data.length)
+    console.log(JSON.stringify(data, null, 2))
+  }
+}
+
+checkUsers()
+=== ./src/lib/placeholder-data.ts ===
+// Comprehensive Placeholder Data for Helm Market
+
+export type Provider = 'openai' | 'gemini' | 'anthropic' | 'llama' | 'custom';
+export type Category = 'general' | 'security' | 'energy-industrial' | 'data-analytics' | 'automation' | 'compliance';
+export type ComplianceLabel = 'EU_AI_ACT' | 'US_FEDERAL' | 'GDPR' | 'SOC2' | 'ISO27001';
+
+export interface Skill {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  price_cents: number;
+  status: string;
+  registry_endpoint: string;
+  permissions: string[];
+  tags: string[];
+  category: Category;
+  providers: Provider[];
+  provider_switchable: boolean;
+  compliance_labels: ComplianceLabel[];
+  developer_id?: string;
+  developers?: {
+    users?: {
+      full_name: string;
+    }
+  };
+}
+
+export const landingStats = {
+  developers: 2400,
+  installations: 12847,
+  payouts: 847293, // in Euros
+};
+
+export const companies = [
+  { name: 'Vercel', logo: '/vercel.svg', color: '#000000' },
+  { name: 'Stripe', logo: '/stripe.svg', color: '#635BFF' },
+  { name: 'OpenAI', logo: '/openai.svg', color: '#10A37F' },
+  { name: 'Linear', logo: '/linear.svg', color: '#5E6AD2' },
+  { name: 'GitHub', logo: '/github.svg', color: '#181717' },
+  { name: 'Supabase', logo: '/supabase.svg', color: '#3ECF8E' },
+];
+
+export const providers = [
+  { id: 'openai', name: 'OpenAI', color: '#10A37F' },
+  { id: 'gemini', name: 'Google Gemini', color: '#4285F4' },
+  { id: 'anthropic', name: 'Anthropic', color: '#D97706' },
+  { id: 'llama', name: 'Meta Llama', color: '#9333EA' },
+  { id: 'mistral', name: 'Mistral', color: '#FACC15' },
+  { id: 'custom', name: 'Custom/Self-hosted', color: '#6366F1' },
+];
+
+export const featuredIn = [
+  { name: 'TLDR AI', logo: 'TLDR' },
+  { name: 'Hacker News', logo: 'HN' },
+  { name: 'Product Hunt', logo: 'PH' },
+  { name: 'Dev.to', logo: 'DEV' }
+];
+
+export const testimonials = [
+  {
+    name: 'Sarah Drasner',
+    handle: 'sarah_edo',
+    avatar: 'https://ui-avatars.com/api/?name=Sarah+Drasner&background=random',
+    rating: 5,
+    quote: 'Helm Market completely changed how we ship AI features. Found a stripe integration skill and had it working in production in 2 hours instead of 2 weeks.',
+  },
+  {
+    name: 'Guillermo Rauch',
+    handle: 'rauchg',
+    avatar: 'https://ui-avatars.com/api/?name=Guillermo+Rauch&background=random',
+    rating: 5,
+    quote: 'The standard for AI agent skills. Sandboxed, typed, and incredibly easy to use. The future of software is agents, and this is their App Store.',
+  },
+  {
+    name: 'Lee Robinson',
+    handle: 'leerob',
+    avatar: 'https://ui-avatars.com/api/?name=Lee+Robinson&background=random',
+    rating: 5,
+    quote: 'I used to write custom tools for every new Claude setup. Now I just helm install. Unbelievable time saver for any serious developer.',
+  },
+];
+
+export const recentInstalls = [
+  { handle: '@jakub_dev', skill: 'stripe-integration', timeAgo: '2 min ago' },
+  { handle: '@mtech', skill: 'binance-connector', timeAgo: '5 min ago' },
+  { handle: '@alex_code', skill: 'data-analyzer-pro', timeAgo: '12 min ago' },
+  { handle: '@sarah_js', skill: 'email-architect', timeAgo: '18 min ago' },
+  { handle: '@dev_ops_ninja', skill: 'aws-manager', timeAgo: '22 min ago' },
+  { handle: '@frontend_fanatic', skill: 'figma-to-react', timeAgo: '31 min ago' },
+  { handle: '@backend_bro', skill: 'postgres-admin', timeAgo: '45 min ago' },
+  { handle: '@ai_enthusiast', skill: 'claude-context-builder', timeAgo: '1 hr ago' },
+  { handle: '@ruby_dev', skill: 'redis-optimizer', timeAgo: '1 hr ago' },
+  { handle: '@golang_guru', skill: 'github-pr-reviewer', timeAgo: '2 hrs ago' },
+];
+
+export const categoryFilters = [
+  { name: 'All Skills', id: 'all', count: 247 },
+  { name: 'Security 🔒', id: 'security', count: 34 },
+  { name: 'Compliance ✅', id: 'compliance', count: 28 },
+  { name: 'Energy ⚡', id: 'energy-industrial', count: 41 },
+  { name: 'Analytics 📊', id: 'data-analytics', count: 38 },
+  { name: 'Automation 🤖', id: 'automation', count: 31 },
+  { name: 'General 🔧', id: 'general', count: 22 },
+];
+
+export const placeholderSkills: Skill[] = [
+  // SECURITY
+  {
+    id: 'sec-1',
+    name: 'vuln-scanner',
+    slug: 'vuln-scanner',
+    description: 'Automated vulnerability scan via NIST NVD API. Provides real-time threat intelligence for your dependencies.',
+    price_cents: 19900,
+    status: 'published',
+    registry_endpoint: '@helm-market/vuln-scanner',
+    permissions: ['internet-access'],
+    tags: ['security', 'nist', 'vulnerability'],
+    category: 'security',
+    providers: ['openai', 'anthropic'],
+    provider_switchable: true,
+    compliance_labels: ['SOC2', 'ISO27001'],
+  },
+  {
+    id: 'sec-2',
+    name: 'zero-trust-checker',
+    slug: 'zero-trust-checker',
+    description: 'Validates Zero Trust policy compliance across your distributed network architecture.',
+    price_cents: 29900,
+    status: 'published',
+    registry_endpoint: '@helm-market/zero-trust',
+    permissions: ['read-files', 'internet-access'],
+    tags: ['security', 'zero-trust', 'compliance'],
+    category: 'security',
+    providers: ['llama', 'custom'],
+    provider_switchable: true,
+    compliance_labels: ['SOC2'],
+  },
+  {
+    id: 'sec-3',
+    name: 'audit-trail',
+    slug: 'audit-trail',
+    description: 'Immutable audit log writer to Supabase. Ensures all agent actions are logged for forensic analysis.',
+    price_cents: 9900,
+    status: 'published',
+    registry_endpoint: '@helm-market/audit-trail',
+    permissions: ['write-files'],
+    tags: ['security', 'audit', 'logging'],
+    category: 'security',
+    providers: ['openai'],
+    provider_switchable: false,
+    compliance_labels: ['GDPR', 'SOC2'],
+  },
+  {
+    id: 'sec-4',
+    name: 'anomaly-detect',
+    slug: 'anomaly-detect',
+    description: 'Network anomaly detection via baseline AI. Identifies suspicious traffic patterns in real-time.',
+    price_cents: 49900,
+    status: 'published',
+    registry_endpoint: '@helm-market/anomaly-detect',
+    permissions: ['internet-access', 'execute-scripts'],
+    tags: ['security', 'ai', 'network'],
+    category: 'security',
+    providers: ['openai', 'gemini', 'anthropic'],
+    provider_switchable: true,
+    compliance_labels: ['ISO27001'],
+  },
+
+  // COMPLIANCE
+  {
+    id: 'comp-1',
+    name: 'eu-ai-act-audit',
+    slug: 'eu-ai-act-audit',
+    description: 'Checks AI outputs against EU AI Act rules. Automatically generates compliance reports for regulators.',
+    price_cents: 59900,
+    status: 'published',
+    registry_endpoint: '@helm-market/eu-ai-audit',
+    permissions: ['internet-access'],
+    tags: ['compliance', 'eu', 'ai-act'],
+    category: 'compliance',
+    providers: ['anthropic', 'openai'],
+    provider_switchable: true,
+    compliance_labels: ['EU_AI_ACT'],
+  },
+  {
+    id: 'comp-2',
+    name: 'gdpr-data-scan',
+    slug: 'gdpr-data-scan',
+    description: 'Scans data pipelines for GDPR violations. Detects PII leaks before they hit your production database.',
+    price_cents: 34900,
+    status: 'published',
+    registry_endpoint: '@helm-market/gdpr-scan',
+    permissions: ['read-files'],
+    tags: ['compliance', 'gdpr', 'pii'],
+    category: 'compliance',
+    providers: ['llama', 'custom'],
+    provider_switchable: true,
+    compliance_labels: ['GDPR'],
+  },
+  {
+    id: 'comp-3',
+    name: 'us-federal-ai',
+    slug: 'us-federal-ai',
+    description: 'Validates AI use against US Federal AI policy. Ensures your agents meet government transparency standards.',
+    price_cents: 44900,
+    status: 'published',
+    registry_endpoint: '@helm-market/us-fed-ai',
+    permissions: ['internet-access'],
+    tags: ['compliance', 'us-federal', 'policy'],
+    category: 'compliance',
+    providers: ['openai', 'anthropic'],
+    provider_switchable: false,
+    compliance_labels: ['US_FEDERAL'],
+  },
+  {
+    id: 'comp-4',
+    name: 'llm-bias-check',
+    slug: 'llm-bias-check',
+    description: 'Detects bias in LLM outputs with detailed reporting. Essential for ethical AI deployment.',
+    price_cents: 14900,
+    status: 'published',
+    registry_endpoint: '@helm-market/bias-check',
+    permissions: ['internet-access'],
+    tags: ['compliance', 'bias', 'ethics'],
+    category: 'compliance',
+    providers: ['openai', 'gemini', 'anthropic', 'llama'],
+    provider_switchable: true,
+    compliance_labels: ['EU_AI_ACT', 'US_FEDERAL'],
+  },
+
+  // ENERGY
+  {
+    id: 'energy-1',
+    name: 'grid-optimizer',
+    slug: 'grid-optimizer',
+    description: 'Smart grid load balancing via AI prediction. Optimizes energy distribution for industrial facilities.',
+    price_cents: 79900,
+    status: 'published',
+    registry_endpoint: '@helm-market/grid-opt',
+    permissions: ['internet-access', 'execute-scripts'],
+    tags: ['energy', 'grid', 'optimization'],
+    category: 'energy-industrial',
+    providers: ['openai', 'custom'],
+    provider_switchable: true,
+    compliance_labels: ['ISO27001'],
+  },
+  {
+    id: 'energy-2',
+    name: 'energy-forecast',
+    slug: 'energy-forecast',
+    description: '24h energy demand forecasting agent. Uses historical data and weather patterns to predict usage.',
+    price_cents: 29900,
+    status: 'published',
+    registry_endpoint: '@helm-market/energy-forecast',
+    permissions: ['internet-access'],
+    tags: ['energy', 'forecast', 'ai'],
+    category: 'energy-industrial',
+    providers: ['gemini', 'openai'],
+    provider_switchable: true,
+    compliance_labels: [],
+  },
+  {
+    id: 'energy-3',
+    name: 'material-search',
+    slug: 'material-search',
+    description: 'AI search over material science databases. Accelerates R&D for new industrial materials.',
+    price_cents: 19900,
+    status: 'published',
+    registry_endpoint: '@helm-market/material-search',
+    permissions: ['internet-access'],
+    tags: ['industrial', 'science', 'research'],
+    category: 'energy-industrial',
+    providers: ['anthropic', 'openai'],
+    provider_switchable: false,
+    compliance_labels: [],
+  },
+  {
+    id: 'energy-4',
+    name: 'sensor-pipeline',
+    slug: 'sensor-pipeline',
+    description: 'Industrial IoT sensor data → AI insights. Processes high-frequency telemetry into actionable reports.',
+    price_cents: 39900,
+    status: 'published',
+    registry_endpoint: '@helm-market/sensor-pipeline',
+    permissions: ['read-files', 'execute-scripts'],
+    tags: ['industrial', 'iot', 'telemetry'],
+    category: 'energy-industrial',
+    providers: ['llama', 'custom'],
+    provider_switchable: true,
+    compliance_labels: ['SOC2'],
+  },
+];
+
+export const placeholderReviews = [
+  { id: 1, user: 'Alex C.', avatar: 'https://ui-avatars.com/api/?name=Alex+C&background=random', date: '2024-03-15', rating: 5, text: 'Works perfectly out of the box. The MCP integration is seamless.' },
+  { id: 2, user: 'Maria S.', avatar: 'https://ui-avatars.com/api/?name=Maria+S&background=random', date: '2024-03-10', rating: 4, text: 'Great skill, saves me hours every week. Documentation could be slightly more detailed on advanced use cases.' },
+  { id: 3, user: 'John D.', avatar: 'https://ui-avatars.com/api/?name=John+D&background=random', date: '2024-03-05', rating: 5, text: 'Exactly what I needed for my autonomous agent workflow. High quality code.' },
+  { id: 4, user: 'Emily R.', avatar: 'https://ui-avatars.com/api/?name=Emily+R&background=random', date: '2024-02-28', rating: 5, text: 'The permissions model is clear and secure. I feel comfortable running this.' },
+  { id: 5, user: 'Chris B.', avatar: 'https://ui-avatars.com/api/?name=Chris+B&background=random', date: '2024-02-20', rating: 5, text: 'Best 15 bucks I spent this month.' },
+  { id: 6, user: 'Jessica T.', avatar: 'https://ui-avatars.com/api/?name=Jessica+T&background=random', date: '2024-02-15', rating: 3, text: 'Good, but had some issues with the initial setup on Windows.' },
+  { id: 7, user: 'David W.', avatar: 'https://ui-avatars.com/api/?name=David+W&background=random', date: '2024-02-10', rating: 5, text: 'Instant productivity boost.' },
+  { id: 8, user: 'Laura M.', avatar: 'https://ui-avatars.com/api/?name=Laura+M&background=random', date: '2024-02-01', rating: 4, text: 'Solid implementation. Waiting for the next update for more features.' },
+];
+
+export const reviewStats = {
+  total: 127,
+  average: 4.8,
+  breakdown: [
+    { stars: 5, percentage: 68 },
+    { stars: 4, percentage: 21 },
+    { stars: 3, percentage: 8 },
+    { stars: 2, percentage: 2 },
+    { stars: 1, percentage: 1 },
+  ]
+};
+
+export const changelog = [
+  { version: 'v2.1.4', date: 'March 20, 2024', changes: ['Fixed an edge case in data parsing', 'Improved memory usage during large operations'] },
+  { version: 'v2.1.3', date: 'March 10, 2024', changes: ['Added support for concurrent requests', 'Updated dependencies to patch security vulnerabilities'] },
+  { version: 'v2.0.0', date: 'February 15, 2024', changes: ['Major rewrite for MCP compatibility', 'Introduced new fine-grained permission model', 'Performance improvements across all operations'] },
+];
+
+export const chartData = {
+  installs: [
+    { name: 'Day 1', installs: 40 },
+    { name: 'Day 5', installs: 30 },
+    { name: 'Day 10', installs: 55 },
+    { name: 'Day 15', installs: 45 },
+    { name: 'Day 20', installs: 70 },
+    { name: 'Day 25', installs: 65 },
+    { name: 'Day 30', installs: 85 },
+  ],
+  countries: [
+    { name: 'United States', value: 45 },
+    { name: 'Germany', value: 20 },
+    { name: 'United Kingdom', value: 15 },
+    { name: 'India', value: 10 },
+    { name: 'Canada', value: 10 },
+  ]
+};
+
+export const sampleReadme = `
+# Skill Documentation
+
+This skill allows your AI agent to seamlessly integrate with external services, providing robust functionality out of the box.
+
+## Quick Start
+
+\`\`\`bash
+helm install @helm-market/this-skill
+\`\`\`
+
+## Configuration
+
+Add the following to your agent's configuration:
+
+\`\`\`json
+{
+  "skills": ["@helm-market/this-skill"],
+  "permissions": {
+    "internet-access": true
+  }
+}
+\`\`\`
+
+## Advanced Usage
+
+For more advanced workflows, you can chain operations...
+`;
+=== ./src/lib/utils.ts ===
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+=== ./src/lib/mcp/utils.ts ===
+export interface HelmOperation {
+  name: string;
+  description: string;
+  parameters: Record<string, any>;
+}
+
+export interface HelmConfig {
+  name: string;
+  version?: string;
+  description?: string;
+  operations: HelmOperation[];
+}
+
+export function translateToMCPManifest(config: HelmConfig, slug: string) {
+  return {
+    mcpVersion: "1.0.0",
+    server: {
+      name: config.name,
+      version: config.version || "0.1.0",
+      description: config.description || `MCP Server for ${config.name}`
+    },
+    tools: config.operations.map(op => ({
+      name: op.name,
+      description: op.description,
+      inputSchema: {
+        type: "object",
+        properties: op.parameters || {},
+        required: Object.keys(op.parameters || {})
+      }
+    }))
+  };
+}
+=== ./src/lib/stripe/index.ts ===
+import Stripe from 'stripe'
+
+if (!process.env.STRIPE_SECRET_KEY && process.env.NODE_ENV === 'production') {
+  console.warn('Warning: STRIPE_SECRET_KEY is not defined')
+}
+
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder', {
+  apiVersion: '2023-10-16' as any,
+})
+=== ./src/services/supabase/skills.ts ===
+import { createClient } from '@/utils/supabase/server'
+
+export async function getSkills(filters?: { categoryId?: string; search?: string }) {
+  const supabase = await createClient()
+  let query = supabase.from('skills').select('*, categories(*), developers(*)').eq('status', 'published')
+
+  if (filters?.categoryId) {
+    query = query.eq('category_id', filters.categoryId)
+  }
+
+  if (filters?.search) {
+    query = query.ilike('name', `%${filters.search}%`)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return data
+}
+
+export async function getSkillBySlug(slug: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('skills')
+    .select('*, categories(*), developers(*)')
+    .eq('slug', slug)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function createSkill(skillData: any) {
+  const supabase = await createClient(true)
+  const { data, error } = await supabase.from('skills').insert(skillData).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function getDeveloper(id: string) {
+  const supabase = await createClient(true)
+  const { data, error } = await supabase.from('developers').select('*').eq('id', id).single()
+  if (error) throw error
+  return data
+}
+
+export async function addToWaitlist(email: string) {
+  const supabase = await createClient(true)
+  const { data, error } = await supabase.from('waitlist').insert({ email }).select().single()
+  if (error && error.code !== '23505') throw error // Ignore duplicate key error (already on list)
+  return data
+}

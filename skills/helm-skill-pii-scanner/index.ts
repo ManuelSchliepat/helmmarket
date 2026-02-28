@@ -36,8 +36,8 @@ export interface PiiScanResult {
 
 const PII_PATTERNS = [
   { type: 'EMAIL', regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, gdpr: true, category: 'Personal Data' },
-  { type: 'PHONE_EU', regex: /(?:\+|00)(?:49|33|44|31|34|39|41|43|45|46|47|48)\s*(?:\(?\d{1,4}\)?[\s\-]*)?\d{3,4}[\s\-]*\d{3,4}[\s\-]*\d{0,4}/g, gdpr: true, category: 'Personal Data' },
-  { type: 'PHONE_US', regex: /(?:\+?1[\s-]?)?(?:\(\d{3}\)|\d{3})[\s-]?\d{3}[\s-]?\d{4}/g, gdpr: true, category: 'Personal Data' },
+  { type: 'PHONE_EU', regex: /(?:^|\s)(?:\+|00)(?:49|33|44|31|34|39|41|43|45|46|47|48)\s*(?:\(?\d{1,4}\)?[\s\-]*)?\d{3,4}[\s\-]*\d{3,4}[\s\-]*\d{0,4}(?=$|\s|\b)/g, gdpr: true, category: 'Personal Data' },
+  { type: 'PHONE_US', regex: /(?:^|\s)(?:\+?1[\s-]?)?(?:\(\d{3}\)|\d{3})[\s-]?\d{3}[\s-]?\d{4}(?=$|\s|\b)/g, gdpr: true, category: 'Personal Data' },
   { type: 'IBAN', regex: /[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?){0,16}/g, gdpr: true, category: 'Financial Data' },
   { type: 'IP_ADDRESS', regex: /(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}/g, gdpr: true, category: 'Online Identifiers' },
   { type: 'CREDIT_CARD', regex: /(?:\d[ -]*?){13,19}/g, gdpr: true, category: 'Financial Data' },

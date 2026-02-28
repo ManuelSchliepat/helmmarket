@@ -31,7 +31,7 @@ async function runTests() {
 
   console.log("\n--- TESTING helm-skill-pii-scanner ---");
   try {
-    const textToScan = "Hello, contact me at john.doe@example.com or call +49 151 1234567. My credit card is 4532 1111 2222 3333.";
+    const textToScan = "Hello, contact me at john.doe@example.com or call +49 151 1234567. My credit card is 4111 1111 1111 1111.";
     const piiResult = await redactText(textToScan);
     console.log("Original: " + textToScan);
     console.log("Redacted: " + piiResult.redacted);
