@@ -3,6 +3,14 @@
 export type Provider = 'openai' | 'gemini' | 'anthropic' | 'llama' | 'custom';
 export type Category = 'general' | 'security' | 'energy-industrial' | 'data-analytics' | 'automation' | 'compliance';
 export type ComplianceLabel = 'EU_AI_ACT' | 'US_FEDERAL' | 'GDPR' | 'SOC2' | 'ISO27001';
+export type ReviewStatus = 'in_review' | 'live' | 'rejected' | 'draft';
+
+export interface Compatibility {
+  node: string;
+  typescript: string;
+  helm: string;
+  nextjs: string;
+}
 
 export interface Skill {
   id: string;
@@ -10,7 +18,9 @@ export interface Skill {
   slug: string;
   description: string;
   price_cents: number;
-  status: string;
+  status: string; // Legacy status field
+  review_status: ReviewStatus;
+  review_note?: string;
   registry_endpoint: string;
   permissions: string[];
   tags: string[];
@@ -18,11 +28,14 @@ export interface Skill {
   providers: Provider[];
   provider_switchable: boolean;
   compliance_labels: ComplianceLabel[];
-  code_example?: string;
+  code_example: string;
+  compatibility: Compatibility;
+  updated_at: string;
   developer_id?: string;
   developers?: {
     users?: {
       full_name: string;
+      is_publisher_verified: boolean;
     }
   };
 }
@@ -105,6 +118,13 @@ export const categoryFilters = [
   { name: 'General 🔧', id: 'general', count: 22 },
 ];
 
+const defaultCompatibility: Compatibility = {
+  node: "18+",
+  typescript: "4.9+",
+  helm: "1.x",
+  nextjs: "13+"
+};
+
 export const placeholderSkills: Skill[] = [
   // SECURITY
   {
@@ -114,6 +134,7 @@ export const placeholderSkills: Skill[] = [
     description: 'Gibt einen Paketnamen oder CVE-ID ein und bekommt sofort Schweregrad, CVSS-Score und betroffene Versionen zurück — direkt aus der NIST NVD Datenbank. Für DevOps-Teams die Sicherheitslücken in ihrer Dependency-Pipeline erkennen müssen. Ersetzt 20 Minuten manuelles CVE-Recherchieren pro Vorfall.',
     price_cents: 19900,
     status: 'published',
+    review_status: 'live',
     registry_endpoint: '@helm-market/vuln-scanner',
     permissions: ['internet-access'],
     tags: ['security', 'nist', 'vulnerability'],
@@ -121,7 +142,9 @@ export const placeholderSkills: Skill[] = [
     providers: ['openai', 'anthropic'],
     provider_switchable: true,
     compliance_labels: ['SOC2', 'ISO27001'],
-    code_example: `import { vulnScanner } from '@helm-market/vuln-scanner'\nconst agent = new Helm({ skills: [vulnScanner] })\nconst report = await agent.run("Scan production dependencies")`,
+    compatibility: defaultCompatibility,
+    updated_at: new Date().toISOString(),
+    code_example: `import { createHelm } from '@bgub/helm'\nimport { vulnScanner } from '@helm-market/vuln-scanner'\n\nconst helm = createHelm({ skills: [vulnScanner] })\n\nconst result = await helm.run(\n  'Check CVE-2021-44228 severity and affected versions'\n)\nconsole.log(result)\n// → { id: "CVE-2021-44228", severity: "CRITICAL", \n//     score: 10, affectedVersions: [...] }`,
   },
   {
     id: 'sec-2',
@@ -130,6 +153,7 @@ export const placeholderSkills: Skill[] = [
     description: 'Prüft eine Netzwerk-Policy-Konfiguration gegen Zero Trust Prinzipien und gibt eine Liste konkreter Verstöße zurück. Für Security-Engineers die Compliance-Audits vorbereiten.',
     price_cents: 29900,
     status: 'published',
+    review_status: 'live',
     registry_endpoint: '@helm-market/zero-trust',
     permissions: ['read-files', 'internet-access'],
     tags: ['security', 'zero-trust', 'compliance'],
@@ -137,7 +161,9 @@ export const placeholderSkills: Skill[] = [
     providers: ['llama', 'custom'],
     provider_switchable: true,
     compliance_labels: ['SOC2'],
-    code_example: `import { zeroTrust } from '@helm-market/zero-trust'\nconst agent = new Helm({ skills: [zeroTrust] })\nconst audit = await agent.run("Verify network microsegmentation")`,
+    compatibility: defaultCompatibility,
+    updated_at: new Date().toISOString(),
+    code_example: `import { createHelm } from '@bgub/helm'\nimport { zeroTrust } from '@helm-market/zero-trust'\n\nconst helm = createHelm({ skills: [zeroTrust] })\n\nconst result = await helm.run(\n  'Verify zero trust compliance for network-policy.yaml'\n)\nconsole.log(result)`,
   },
   {
     id: 'sec-3',
@@ -146,6 +172,7 @@ export const placeholderSkills: Skill[] = [
     description: 'Schreibt jeden AI-Agenten-Schritt als unveränderlichen Log-Eintrag in Supabase. Für Teams die AI-Entscheidungen rückverfolgbar machen müssen — z.B. für EU AI Act Audits.',
     price_cents: 9900,
     status: 'published',
+    review_status: 'live',
     registry_endpoint: '@helm-market/audit-trail',
     permissions: ['write-files'],
     tags: ['security', 'audit', 'logging'],
@@ -153,7 +180,9 @@ export const placeholderSkills: Skill[] = [
     providers: ['openai'],
     provider_switchable: false,
     compliance_labels: ['GDPR', 'SOC2'],
-    code_example: `import { auditTrail } from '@helm-market/audit-trail'\nconst agent = new Helm({ skills: [auditTrail] })\nawait agent.run("Log critical transaction #442")`,
+    compatibility: defaultCompatibility,
+    updated_at: new Date().toISOString(),
+    code_example: `import { createHelm } from '@bgub/helm'\nimport { auditTrail } from '@helm-market/audit-trail'\n\nconst helm = createHelm({ skills: [auditTrail] })\n\nconst result = await helm.run(\n  'Log critical transaction #442'\n)\nconsole.log(result)`,
   },
   {
     id: 'sec-4',
@@ -162,6 +191,7 @@ export const placeholderSkills: Skill[] = [
     description: 'Analysiert Netzwerk-Traffic-Muster und meldet Abweichungen vom Baseline-Verhalten in Echtzeit. Für IT-Admins die nicht warten wollen bis ein Angriff Schaden angerichtet hat.',
     price_cents: 49900,
     status: 'published',
+    review_status: 'live',
     registry_endpoint: '@helm-market/anomaly-detect',
     permissions: ['internet-access', 'execute-scripts'],
     tags: ['security', 'ai', 'network'],
@@ -169,7 +199,9 @@ export const placeholderSkills: Skill[] = [
     providers: ['openai', 'gemini', 'anthropic'],
     provider_switchable: true,
     compliance_labels: ['ISO27001'],
-    code_example: `import { anomalyDetect } from '@helm-market/anomaly-detect'\nconst agent = new Helm({ skills: [anomalyDetect] })\nconst alerts = await agent.run("Monitor egress traffic for leaks")`,
+    compatibility: defaultCompatibility,
+    updated_at: new Date().toISOString(),
+    code_example: `import { createHelm } from '@bgub/helm'\nimport { anomalyDetect } from '@helm-market/anomaly-detect'\n\nconst helm = createHelm({ skills: [anomalyDetect] })\n\nconst result = await helm.run(\n  'Monitor egress traffic for leaks'\n)\nconsole.log(result)`,
   },
 
   // COMPLIANCE
@@ -180,6 +212,7 @@ export const placeholderSkills: Skill[] = [
     description: 'Prüft AI-generierte Outputs gegen EU AI Act Anforderungen und gibt einen strukturierten Compliance-Report zurück. Für Unternehmen die AI in Hochrisiko-Anwendungen einsetzen und Nachweispflichten erfüllen müssen.',
     price_cents: 59900,
     status: 'published',
+    review_status: 'live',
     registry_endpoint: '@helm-market/eu-ai-audit',
     permissions: ['internet-access'],
     tags: ['compliance', 'eu', 'ai-act'],
@@ -187,7 +220,9 @@ export const placeholderSkills: Skill[] = [
     providers: ['anthropic', 'openai'],
     provider_switchable: true,
     compliance_labels: ['EU_AI_ACT'],
-    code_example: `import { aiAudit } from '@helm-market/eu-ai-audit'\nconst agent = new Helm({ skills: [aiAudit] })\nconst result = await agent.run("Audit last 100 model responses")`,
+    compatibility: defaultCompatibility,
+    updated_at: new Date().toISOString(),
+    code_example: `import { createHelm } from '@bgub/helm'\nimport { aiAudit } from '@helm-market/eu-ai-audit'\n\nconst helm = createHelm({ skills: [aiAudit] })\n\nconst result = await helm.run(\n  'Audit last 100 model responses for compliance'\n)\nconsole.log(result)`,
   },
   {
     id: 'comp-2',
@@ -196,6 +231,7 @@ export const placeholderSkills: Skill[] = [
     description: 'Scannt Datenpipelines und Texte auf GDPR-relevante personenbezogene Daten — bevor sie in ein LLM fließen. Für Entwickler die keine Bußgelder riskieren wollen.',
     price_cents: 34900,
     status: 'published',
+    review_status: 'live',
     registry_endpoint: '@helm-market/gdpr-scan',
     permissions: ['read-files'],
     tags: ['compliance', 'gdpr', 'pii'],
@@ -203,7 +239,9 @@ export const placeholderSkills: Skill[] = [
     providers: ['llama', 'custom'],
     provider_switchable: true,
     compliance_labels: ['GDPR'],
-    code_example: `import { gdprScan } from '@helm-market/gdpr-scan'\nconst agent = new Helm({ skills: [gdprScan] })\nconst findings = await agent.run("Scan S3 bucket for PII")`,
+    compatibility: defaultCompatibility,
+    updated_at: new Date().toISOString(),
+    code_example: `import { createHelm } from '@bgub/helm'\nimport { gdprScan } from '@helm-market/gdpr-scan'\n\nconst helm = createHelm({ skills: [gdprScan] })\n\nconst result = await helm.run(\n  'Scan this text for PII: My name is John Doe, email john@example.com'\n)\nconsole.log(result)`,
   },
   {
     id: 'comp-3',
@@ -212,6 +250,7 @@ export const placeholderSkills: Skill[] = [
     description: 'Validiert AI-System-Outputs gegen aktuelle US Federal AI Policy Vorgaben. Für Anbieter die US-Behörden beliefern oder beliefern wollen.',
     price_cents: 44900,
     status: 'published',
+    review_status: 'live',
     registry_endpoint: '@helm-market/us-fed-ai',
     permissions: ['internet-access'],
     tags: ['compliance', 'us-federal', 'policy'],
@@ -219,7 +258,9 @@ export const placeholderSkills: Skill[] = [
     providers: ['openai', 'anthropic'],
     provider_switchable: false,
     compliance_labels: ['US_FEDERAL'],
-    code_example: `import { usFedAi } from '@helm-market/us-fed-ai'\nconst agent = new Helm({ skills: [usFedAi] })\nawait agent.run("Verify model transparency reports")`,
+    compatibility: defaultCompatibility,
+    updated_at: new Date().toISOString(),
+    code_example: `import { createHelm } from '@bgub/helm'\nimport { usFedAi } from '@helm-market/us-fed-ai'\n\nconst helm = createHelm({ skills: [usFedAi] })\n\nconst result = await helm.run(\n  'Validate current output against US Federal AI standards'\n)\nconsole.log(result)`,
   },
   {
     id: 'comp-4',
@@ -228,6 +269,7 @@ export const placeholderSkills: Skill[] = [
     description: 'Analysiert LLM-Outputs auf Bias und Diskriminierungsmuster und liefert einen Report mit betroffenen Textstellen und Korrekturvorschlägen. Für Teams die AI in Produkten einsetzen und Compliance nachweisen müssen.',
     price_cents: 14900,
     status: 'published',
+    review_status: 'live',
     registry_endpoint: '@helm-market/bias-check',
     permissions: ['internet-access'],
     tags: ['compliance', 'bias', 'ethics'],
@@ -235,7 +277,9 @@ export const placeholderSkills: Skill[] = [
     providers: ['openai', 'gemini', 'anthropic', 'llama'],
     provider_switchable: true,
     compliance_labels: ['EU_AI_ACT', 'US_FEDERAL'],
-    code_example: `import { biasCheck } from '@helm-market/bias-check'\nconst agent = new Helm({ skills: [biasCheck] })\nconst report = await agent.run("Analyze sentiment for bias")`,
+    compatibility: defaultCompatibility,
+    updated_at: new Date().toISOString(),
+    code_example: `import { createHelm } from '@bgub/helm'\nimport { llmBiasCheck } from '@helm-market/llm-bias-check'\n\nconst helm = createHelm({ skills: [llmBiasCheck] })\n\nconst result = await helm.run(\n  'Check this text for bias: \"Candidates must be energetic young professionals\"'\n)\nconsole.log(result)\n// → { hasBias: true, type: \"AGE_DISCRIMINATION\", \n//     suggestion: \"Remove age-related language\" }`,
   },
 
   // ENERGY
@@ -246,6 +290,7 @@ export const placeholderSkills: Skill[] = [
     description: 'Gibt Echtzeit-Lastdaten eines Stromnetzes ein und bekommt AI-optimierte Verteilungsempfehlungen zurück. Für Energieversorger die Überlastungen verhindern wollen.',
     price_cents: 79900,
     status: 'published',
+    review_status: 'live',
     registry_endpoint: '@helm-market/grid-opt',
     permissions: ['internet-access', 'execute-scripts'],
     tags: ['energy', 'grid', 'optimization'],
@@ -253,7 +298,9 @@ export const placeholderSkills: Skill[] = [
     providers: ['openai', 'custom'],
     provider_switchable: true,
     compliance_labels: ['ISO27001'],
-    code_example: `import { gridOpt } from '@helm-market/grid-opt'\nconst agent = new Helm({ skills: [gridOpt] })\nawait agent.run("Balance load for Factory A")`,
+    compatibility: defaultCompatibility,
+    updated_at: new Date().toISOString(),
+    code_example: `import { createHelm } from '@bgub/helm'\nimport { gridOpt } from '@helm-market/grid-opt'\n\nconst helm = createHelm({ skills: [gridOpt] })\n\nconst result = await helm.run(\n  'Optimize load distribution for sector 7G'\n)\nconsole.log(result)`,
   },
   {
     id: 'energy-2',
@@ -262,6 +309,7 @@ export const placeholderSkills: Skill[] = [
     description: 'Erstellt eine 24h-Energiebedarfs-Prognose basierend auf historischen Verbrauchsdaten und Wetterdaten. Für Industriebetriebe die Energiekosten durch besseres Timing senken wollen.',
     price_cents: 29900,
     status: 'published',
+    review_status: 'live',
     registry_endpoint: '@helm-market/energy-forecast',
     permissions: ['internet-access'],
     tags: ['energy', 'forecast', 'ai'],
@@ -269,7 +317,9 @@ export const placeholderSkills: Skill[] = [
     providers: ['gemini', 'openai'],
     provider_switchable: true,
     compliance_labels: [],
-    code_example: `import { forecast } from '@helm-market/energy-forecast'\nconst agent = new Helm({ skills: [forecast] })\nconst prediction = await agent.run("Forecast next 24h demand")`,
+    compatibility: defaultCompatibility,
+    updated_at: new Date().toISOString(),
+    code_example: `import { createHelm } from '@bgub/helm'\nimport { forecast } from '@helm-market/energy-forecast'\n\nconst helm = createHelm({ skills: [forecast] })\n\nconst result = await helm.run(\n  'Forecast demand for the next 24 hours based on sensor data'\n)\nconsole.log(result)`,
   },
   {
     id: 'energy-3',
@@ -278,6 +328,7 @@ export const placeholderSkills: Skill[] = [
     description: 'Durchsucht wissenschaftliche Materialdatenbanken mit natürlicher Sprache und gibt strukturierte Ergebnisse zurück. Für Ingenieure die stundenlange Literaturrecherche auf Sekunden reduzieren wollen.',
     price_cents: 19900,
     status: 'published',
+    review_status: 'live',
     registry_endpoint: '@helm-market/material-search',
     permissions: ['internet-access'],
     tags: ['industrial', 'science', 'research'],
@@ -285,7 +336,9 @@ export const placeholderSkills: Skill[] = [
     providers: ['anthropic', 'openai'],
     provider_switchable: false,
     compliance_labels: [],
-    code_example: `import { matSearch } from '@helm-market/material-search'\nconst agent = new Helm({ skills: [matSearch] })\nconst results = await agent.run("Search for high-temp alloys")`,
+    compatibility: defaultCompatibility,
+    updated_at: new Date().toISOString(),
+    code_example: `import { createHelm } from '@bgub/helm'\nimport { materialSearch } from '@helm-market/material-search'\n\nconst helm = createHelm({ skills: [materialSearch] })\n\nconst result = await helm.run(\n  'Search for high-temp alloys with >50% tensile strength'\n)\nconsole.log(result)`,
   },
   {
     id: 'energy-4',
@@ -294,6 +347,7 @@ export const placeholderSkills: Skill[] = [
     description: 'Verarbeitet rohe IoT-Sensordaten und gibt AI-interpretierte Insights zurück — Anomalien, Trends, Handlungsempfehlungen. Für Produktionsleiter die ihre Maschinen verstehen wollen ohne Data Science Team.',
     price_cents: 39900,
     status: 'published',
+    review_status: 'live',
     registry_endpoint: '@helm-market/sensor-pipeline',
     permissions: ['read-files', 'execute-scripts'],
     tags: ['industrial', 'iot', 'telemetry'],
@@ -301,7 +355,9 @@ export const placeholderSkills: Skill[] = [
     providers: ['llama', 'custom'],
     provider_switchable: true,
     compliance_labels: ['SOC2'],
-    code_example: `import { sensorPipe } from '@helm-market/sensor-pipeline'\nconst agent = new Helm({ skills: [sensorPipe] })\nawait agent.run("Process last 10k telemetry packets")`,
+    compatibility: defaultCompatibility,
+    updated_at: new Date().toISOString(),
+    code_example: `import { createHelm } from '@bgub/helm'\nimport { sensorPipe } from '@helm-market/sensor-pipeline'\n\nconst helm = createHelm({ skills: [sensorPipe] })\n\nconst result = await helm.run(\n  'Process telemetry log and identify potential pump failure'\n)\nconsole.log(result)`,
   },
 
   // GENERAL
@@ -312,6 +368,7 @@ export const placeholderSkills: Skill[] = [
     description: 'Abruf von Echtzeit-Wetter und Prognosen über Industriestandard-Schnittstellen. Unterstützt die Einbindung eigener API-Keys (z.B. OpenWeatherMap) für professionelle Skalierung. Für Agenten in Logistik und Travel, die auf verlässliche Umweltdaten angewiesen sind.',
     price_cents: 1900,
     status: 'published',
+    review_status: 'live',
     registry_endpoint: '@helm-market/weather',
     permissions: ['internet-access'],
     tags: ['general', 'weather', 'api'],
@@ -319,7 +376,9 @@ export const placeholderSkills: Skill[] = [
     providers: ['openai', 'gemini'],
     provider_switchable: true,
     compliance_labels: [],
-    code_example: `import { weather } from '@helm-market/weather'\nconst agent = new Helm({ skills: [weather], config: { apiKey: 'OWM_KEY' } })\nconst current = await agent.run("Check weather in Munich")`,
+    compatibility: defaultCompatibility,
+    updated_at: new Date().toISOString(),
+    code_example: `import { createHelm } from '@bgub/helm'\nimport { weather } from '@helm-market/weather'\n\nconst helm = createHelm({ skills: [weather] })\n\nconst result = await helm.run('Current weather in Berlin')\nconsole.log(result)\n// → { city: \"Berlin\", temp: 14.9, description: \"Overcast\" }`,
   },
   {
     id: 'gen-2',
@@ -328,6 +387,7 @@ export const placeholderSkills: Skill[] = [
     description: 'Konvertiert Beträge zwischen 170+ Währungen mit tagesaktuellen EZB-Kursen. Für Finance-Agenten, E-Commerce und internationale Preisberechnungen.',
     price_cents: 2900,
     status: 'published',
+    review_status: 'live',
     registry_endpoint: '@helm-market/currency',
     permissions: ['internet-access'],
     tags: ['general', 'currency', 'finance'],
@@ -335,7 +395,9 @@ export const placeholderSkills: Skill[] = [
     providers: ['openai', 'anthropic'],
     provider_switchable: true,
     compliance_labels: [],
-    code_example: `import { currency } from '@helm-market/currency'\nconst agent = new Helm({ skills: [currency] })\nconst converted = await agent.run("Convert 100 EUR to USD")`,
+    compatibility: defaultCompatibility,
+    updated_at: new Date().toISOString(),
+    code_example: `import { createHelm } from '@bgub/helm'\nimport { currency } from '@helm-market/currency'\n\nconst helm = createHelm({ skills: [currency] })\n\nconst result = await helm.run('Convert 1000 USD to EUR')\nconsole.log(result)\n// → { from: \"USD\", to: \"EUR\", result: 923.40, rate: 0.9234 }`,
   },
 ];
 

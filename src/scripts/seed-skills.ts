@@ -31,7 +31,10 @@ async function seedSkills() {
         ...skillData,
         developer_id: devId,
         status: 'published',
-        updated_at: new Date().toISOString()
+        review_status: skill.review_status,
+        code_example: skill.code_example,
+        compatibility: skill.compatibility,
+        updated_at: skill.updated_at
       }, {
         onConflict: 'slug'
       })
@@ -43,6 +46,9 @@ async function seedSkills() {
       count++
     }
   }
+
+  // Update dev verified status for demo
+  await supabase.from('users').update({ is_publisher_verified: true }).eq('id', devId)
 
   console.log(`Done. ${count} skills seeded.`)
 }
