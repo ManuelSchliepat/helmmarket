@@ -33,7 +33,7 @@ export default function AgentConsolePage() {
   // Fetch Agents
   const fetchAgents = async () => {
     try {
-      const res = await fetch('/api/agents')
+      const res = await fetch('/api/agents', { cache: 'no-store' })
       if (!res.ok) {
         const errorData = await res.json()
         throw new Error(errorData.error || `HTTP ${res.status}`)
@@ -102,6 +102,14 @@ export default function AgentConsolePage() {
         setNewName('')
         setNewDescription('')
         await fetchAgents()
+        
+        // Find and select the new agent
+        if (data.agent_id) {
+            const resNew = await fetch('/api/agents', { cache: 'no-store' })
+            const dataNew = await resNew.json()
+            const newAgent = dataNew.agents?.find((a: any) => a.id === data.agent_id)
+            if (newAgent) setSelectedAgent(newAgent)
+        }
       } else {
         console.error('Agent creation failed:', data.error)
         alert(`Deployment Failed: ${data.error || 'Unknown error'}`)
@@ -166,11 +174,11 @@ export default function AgentConsolePage() {
                   <Bot className="w-5 h-5" />
                 </div>
                 <div className="text-left flex-1 truncate">
-                  <div className={`text-sm font-bold truncate ${selectedAgent?.id === agent.id ? 'text-white' : 'text-zinc-400'}`}>
+                  <div className={`text-sm font-bold truncate ${selectedAgent?.id === agent.id ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'}`}>
                     {agent.name}
                   </div>
-                  <div className="text-[9px] font-black text-zinc-600 uppercase tracking-tighter truncate">
-                    {agent.model_id.split('/')[1] || agent.model_id}
+                  <div className="text-[10px] font-medium text-zinc-500 group-hover:text-zinc-400 truncate">
+                    {agent.model_id}
                   </div>
                 </div>
                 {selectedAgent?.id === agent.id && (
