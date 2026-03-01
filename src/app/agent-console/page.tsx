@@ -1,5 +1,7 @@
 'use client'
 
+/** BUILD VERIFICATION: CLEAN DEPLOYMENT V3 **/
+
 import { useState, useEffect, useRef } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { 
