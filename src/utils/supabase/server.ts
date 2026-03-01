@@ -16,13 +16,22 @@ export async function createClient(isAdmin = false) {
   
   // Get the token from our Clerk 'supabase' template
   const token = await getToken({ template: 'supabase' })
+  
+  if (token) {
+    console.log(`[Supabase] Client initialized with Clerk JWT (${token.substring(0, 10)}...)`)
+  } else {
+    console.log('[Supabase] Client initialized WITHOUT Clerk JWT (Anonymous mode)')
+  }
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       global: {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        },
       },
       cookies: {
         getAll() {
