@@ -1,6 +1,6 @@
 'use client'
 
-import { useChat } from 'ai/react'
+import { useChat } from '@ai-sdk/react'
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Bot, User, Send, Package, Activity, Info, ChevronRight, CheckCircle2, AlertCircle, Loader2, Sparkles, Globe, Shield, Lock, X } from 'lucide-react'

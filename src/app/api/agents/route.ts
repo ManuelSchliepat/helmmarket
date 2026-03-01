@@ -69,18 +69,14 @@ export async function GET(request: Request) {
     }
     
     const supabase = await createClient()
-    const { data: dbAgents } = await supabase
+    const { data: agents, error } = await supabase
       .from('agents')
       .select('*, agent_skills(*, skills(*))')
       .eq('user_id', userId)
 
-    // Merge with hardcoded fallback
-    const { listAgents } = await import('@/lib/agents-store')
-    const fallbackAgents = await listAgents(userId)
-    
-    const agents = [...(dbAgents || []), ...fallbackAgents]
-    // Filter duplicates by ID
-    const uniqueAgents = agents.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
+    if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 })
+    }
 
-    return NextResponse.json({ agents: uniqueAgents })
+    return NextResponse.json({ agents })
 }
