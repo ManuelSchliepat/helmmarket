@@ -20,6 +20,7 @@
     "@clerk/nextjs": "^6.39.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.98.0",
+    "@xyflow/react": "^12.10.1",
     "ai": "^6.0.105",
     "bcrypt": "^6.0.0",
     "class-variance-authority": "^0.7.1",

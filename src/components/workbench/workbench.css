@@ -1,0 +1,354 @@
+/* ═══════════════════════════════════════════
+   HELM MARKET WORKBENCH — Dark Neon Theme
+   ═══════════════════════════════════════════ */
+
+/* --- Layout --- */
+.workbench-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #0a0a1a;
+  position: relative;
+}
+
+.workbench-canvas {
+  flex: 7;
+  position: relative;
+}
+
+.workbench-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: #0a0a1a;
+  color: #00d4ff;
+  font-size: 1.2rem;
+  font-family: 'Inter', sans-serif;
+}
+
+/* --- React Flow overrides --- */
+.react-flow__node {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.react-flow__edge-path {
+  stroke: #00d4ff;
+  stroke-width: 2;
+}
+
+.flow-controls button {
+  background: #1a1a2e;
+  color: #a0a0c0;
+  border: 1px solid #2a2a4e;
+}
+.flow-controls button:hover {
+  background: #2a2a4e;
+  color: #00d4ff;
+}
+
+/* --- Agent Core Node --- */
+.agent-core-node {
+  background: linear-gradient(135deg, #1a1a2e 0%, #12122a 100%);
+  border: 2px solid #00d4ff;
+  border-radius: 16px;
+  padding: 20px 28px;
+  min-width: 180px;
+  text-align: center;
+  box-shadow:
+    0 0 15px rgba(0, 212, 255, 0.3),
+    0 0 40px rgba(0, 212, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: box-shadow 0.3s ease;
+}
+.agent-core-node:hover {
+  box-shadow:
+    0 0 20px rgba(0, 212, 255, 0.5),
+    0 0 60px rgba(0, 212, 255, 0.2);
+}
+
+/* --- Skill Node --- */
+.skill-node {
+  background: linear-gradient(135deg, #1a1a2e 0%, #151530 100%);
+  border: 1.5px solid #2a2a4e;
+  border-radius: 12px;
+  padding: 14px 20px;
+  min-width: 140px;
+  text-align: center;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+/* Neon glow states */
+.node-glow-active {
+  border-color: #00d4ff;
+  box-shadow:
+    0 0 10px rgba(0, 212, 255, 0.4),
+    0 0 25px rgba(0, 212, 255, 0.15);
+}
+
+.node-glow-processing {
+  border-color: #ffd700;
+  box-shadow:
+    0 0 10px rgba(255, 215, 0, 0.4),
+    0 0 25px rgba(255, 215, 0, 0.15);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.node-glow-error {
+  border-color: #ff4444;
+  box-shadow:
+    0 0 10px rgba(255, 68, 68, 0.4),
+    0 0 25px rgba(255, 68, 68, 0.15);
+}
+
+.node-glow-inactive {
+  border-color: #3a3a5e;
+  opacity: 0.6;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.4), 0 0 25px rgba(255, 215, 0, 0.15); }
+  50% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.6), 0 0 40px rgba(255, 215, 0, 0.3); }
+}
+
+/* --- Node inner elements --- */
+.node-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+
+.node-icon {
+  font-size: 1.4rem;
+}
+
+.node-title {
+  color: #e0e0f0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  font-family: 'Inter', sans-serif;
+}
+
+.node-subtitle {
+  color: #6a6a9a;
+  font-size: 0.75rem;
+  margin-top: 4px;
+}
+
+.node-category {
+  color: #5a5a8a;
+  font-size: 0.7rem;
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 2px 10px;
+  border-radius: 99px;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+.status-badge.status-active { background: rgba(0, 212, 255, 0.15); color: #00d4ff; }
+.status-badge.status-processing { background: rgba(255, 215, 0, 0.15); color: #ffd700; }
+.status-badge.status-error { background: rgba(255, 68, 68, 0.15); color: #ff4444; }
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+.status-dot.status-active { background: #00d4ff; box-shadow: 0 0 6px #00d4ff; }
+.status-dot.status-processing { background: #ffd700; box-shadow: 0 0 6px #ffd700; }
+.status-dot.status-error { background: #ff4444; box-shadow: 0 0 6px #ff4444; }
+
+/* --- Handles --- */
+.handle-glow {
+  width: 10px !important;
+  height: 10px !important;
+  background: #1a1a2e !important;
+  border: 2px solid #00d4ff !important;
+  box-shadow: 0 0 6px rgba(0, 212, 255, 0.5);
+}
+
+/* --- Skill Arsenal (bottom panel) --- */
+.skill-arsenal {
+  flex: 3;
+  background: #0d0d24;
+  border-top: 1px solid #1a1a3e;
+  padding: 16px 24px;
+  overflow-y: auto;
+}
+
+.arsenal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.arsenal-title {
+  color: #e0e0f0;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-family: 'Inter', sans-serif;
+}
+
+.arsenal-count {
+  color: #5a5a8a;
+  font-size: 0.75rem;
+}
+
+.arsenal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.arsenal-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 10px;
+  background: #1a1a2e;
+  border: 1px solid #2a2a4e;
+  border-radius: 10px;
+  cursor: grab;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.arsenal-card:hover {
+  border-color: #00d4ff;
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.3);
+  transform: translateY(-2px);
+}
+.arsenal-card:active {
+  cursor: grabbing;
+  transform: scale(0.97);
+}
+
+.arsenal-icon {
+  font-size: 1.6rem;
+}
+
+.arsenal-name {
+  color: #c0c0e0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.arsenal-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #5a5a8a;
+  padding: 20px;
+  font-size: 0.85rem;
+}
+
+/* --- Config Panel (right sidebar) --- */
+.config-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 300px;
+  height: 70%; /* same height as canvas */
+  background: #12122a;
+  border-left: 1px solid #1a1a3e;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.config-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #1a1a3e;
+  color: #e0e0f0;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.config-close {
+  background: none;
+  border: none;
+  color: #6a6a9a;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.config-close:hover { color: #ff4444; }
+
+.config-body {
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.config-section {
+  margin-bottom: 20px;
+}
+
+.config-section label {
+  display: block;
+  color: #8a8ab0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.config-select,
+.config-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: #1a1a2e;
+  border: 1px solid #2a2a4e;
+  border-radius: 8px;
+  color: #e0e0f0;
+  font-size: 0.85rem;
+}
+.config-select:focus,
+.config-input:focus {
+  border-color: #00d4ff;
+  outline: none;
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.2);
+}
+
+.config-delete-btn {
+  width: 100%;
+  padding: 10px;
+  background: rgba(255, 68, 68, 0.1);
+  border: 1px solid rgba(255, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #ff4444;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-top: 24px;
+  transition: all 0.2s ease;
+}
+.config-delete-btn:hover {
+  background: rgba(255, 68, 68, 0.2);
+  border-color: #ff4444;
+}

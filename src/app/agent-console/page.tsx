@@ -1,19 +1,19 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useChat } from '@ai-sdk/react'
+/** BUILD VERIFICATION: CLEAN DEPLOYMENT V4 (Workbench Integration) **/
+
+import { useState, useEffect } from 'react'
 import { 
-  Bot, Plus, Send, Activity, Info, X, Check, 
-  Settings, Trash2, Globe, Lock, Loader2, Sparkles, User,
-  Shield, Zap
+  Bot, Plus, Activity, X, Check, 
+  Settings, Globe, Lock, Loader2, User
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
+import AgentWorkbench from '@/components/workbench/AgentWorkbench'
 
-// Agent Console - Unified High-Performance Interface
+// Agent Console - Unified High-Performance Interface with Visual Workbench
 export default function AgentConsolePage() {
   const { userId } = useAuth()
   const router = useRouter()
@@ -29,8 +29,6 @@ export default function AgentConsolePage() {
   const [newName, setNewName] = useState('')
   const [newDesc, setNewDescription] = useState('')
   const [newModel, setNewModel] = useState('google/gemini-2.0-flash-001')
-
-  const scrollRef = useRef<HTMLDivElement>(null)
 
   // Fetch Agents via server-side API routes
   const fetchAgents = async () => {
@@ -60,28 +58,6 @@ export default function AgentConsolePage() {
     }
   }, [userId])
 
-  // Chat Logic
-  const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages } = useChat({
-    api: selectedAgent ? `/api/agent/${selectedAgent.id}/chat` : undefined,
-    id: selectedAgent?.id,
-  })
-
-  // Auto-scroll
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [messages])
-
-  // Reset chat when switching agents
-  useEffect(() => {
-    if (selectedAgent) {
-        setMessages([
-            { id: 'welcome', role: 'assistant', content: `Neural bridge established. Sovereign Agent "${selectedAgent.name}" is online and ready for deployment. How can I assist you?` }
-        ])
-    }
-  }, [selectedAgent?.id])
-
   const handleCreateAgent = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!userId) return
@@ -100,19 +76,15 @@ export default function AgentConsolePage() {
       })
       
       const data = await res.json()
-      
       if (!res.ok) throw new Error(data.error || 'Creation failed')
       
       setShowCreateModal(false)
       setNewName('')
       setNewDescription('')
       
-      // Refresh list via API
       await fetchAgents()
       
-      // Select the new agent if ID returned
       if (data.agent_id) {
-          // We could also just find it in the already refreshed list
           const resRefresh = await fetch('/api/agents')
           const dataRefresh = await resRefresh.json()
           const newAgent = dataRefresh.agents?.find((a: any) => a.id === data.agent_id)
@@ -136,7 +108,7 @@ export default function AgentConsolePage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-[#0a0a0a] overflow-hidden">
+    <div className="flex h-[calc(100vh-64px)] bg-[#0a0a1a] overflow-hidden">
       
       {/* 1. AGENT SELECTOR SIDEBAR */}
       <aside className={`w-80 border-r border-zinc-800/50 bg-[#0c0c0c] flex flex-col transition-all duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:w-0 lg:opacity-0'}`}>
@@ -201,16 +173,16 @@ export default function AgentConsolePage() {
         </div>
       </aside>
 
-      {/* 2. MAIN CONSOLE / CHAT */}
-      <main className="flex-1 flex flex-col relative bg-black/20">
+      {/* 2. MAIN WORKBENCH */}
+      <main className="flex-1 flex flex-col relative">
         {!selectedAgent ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-black/20">
              <div className="w-24 h-24 bg-zinc-900 border border-zinc-800 rounded-[2.5rem] flex items-center justify-center mb-8 text-zinc-700">
                 <Bot className="w-12 h-12" />
              </div>
-             <h2 className="text-2xl font-black text-white tracking-tighter mb-4">Command Center Idle</h2>
+             <h2 className="text-2xl font-black text-white tracking-tighter mb-4">Workbench Idle</h2>
              <p className="text-zinc-500 max-w-sm font-medium mb-8 leading-relaxed">
-                Select an existing neural instance from the sidebar or deploy a new agent to begin execution.
+                Select an existing neural instance from the sidebar or deploy a new agent to begin configuring your workbench.
              </p>
              <Button 
                 onClick={() => setShowCreateModal(true)}
@@ -220,9 +192,9 @@ export default function AgentConsolePage() {
              </Button>
           </div>
         ) : (
-          <>
-            {/* Console Header */}
-            <header className="h-16 border-b border-zinc-800/50 px-8 flex items-center justify-between backdrop-blur-xl bg-black/20 sticky top-0 z-10">
+          <div className="flex-1 flex flex-col min-h-0 relative">
+            {/* Header */}
+            <header className="h-16 border-b border-zinc-800/50 px-8 flex items-center justify-between backdrop-blur-xl bg-black/20 absolute top-0 left-0 right-0 z-10">
               <div className="flex items-center gap-4">
                 <Button 
                   variant="ghost" 
@@ -237,7 +209,7 @@ export default function AgentConsolePage() {
                   <div className="flex items-center gap-2">
                     <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">{selectedAgent.model_id}</span>
                     <span className="text-zinc-700 text-[8px]">•</span>
-                    <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Bridged</span>
+                    <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Workbench Connected</span>
                   </div>
                 </div>
               </div>
@@ -248,96 +220,11 @@ export default function AgentConsolePage() {
               </div>
             </header>
 
-            {/* Chat Output */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar">
-              {messages.map((m) => (
-                <motion.div 
-                  key={m.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`flex gap-6 ${m.role === 'user' ? 'justify-end' : ''}`}
-                >
-                  {m.role !== 'user' && (
-                    <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-indigo-400 shrink-0 shadow-lg shadow-black/50">
-                        <Bot className="w-5 h-5" />
-                    </div>
-                  )}
-                  <div className={`max-w-2xl space-y-4 ${m.role === 'user' ? 'order-first' : ''}`}>
-                    <div className={`p-6 rounded-3xl text-sm leading-relaxed ${
-                      m.role === 'user' 
-                        ? 'bg-indigo-600 text-white shadow-2xl shadow-indigo-600/10 rounded-tr-none' 
-                        : 'bg-zinc-900/50 border border-zinc-800 text-zinc-300 rounded-tl-none backdrop-blur-sm shadow-xl'
-                    }`}>
-                      {m.content}
-                    </div>
-
-                    {/* Tool Tracking */}
-                    {m.toolInvocations?.map((ti: any) => (
-                        <div key={ti.toolCallId} className="p-4 bg-black/40 border border-zinc-800 rounded-2xl flex items-center justify-between group">
-                          <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${ti.state === 'result' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500 animate-pulse'}`}>
-                                {ti.state === 'result' ? <Check className="w-4 h-4" /> : <Loader2 className="w-4 h-4 animate-spin" />}
-                              </div>
-                              <div className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">
-                                EXEC: {ti.toolName.replace('__', ': ')}
-                              </div>
-                          </div>
-                          {ti.state === 'result' && (
-                            <div className="text-[8px] font-black text-zinc-700 uppercase tracking-tighter">Success</div>
-                          )}
-                        </div>
-                    ))}
-                  </div>
-                  {m.role === 'user' && (
-                    <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-indigo-600/20">
-                        <User className="w-5 h-5" />
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-              {isLoading && messages[messages.length-1]?.role !== 'assistant' && (
-                  <div className="flex gap-6">
-                    <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-indigo-400 shrink-0 animate-pulse">
-                        <Bot className="w-5 h-5" />
-                    </div>
-                    <div className="h-10 w-24 bg-zinc-900/50 border border-zinc-800 rounded-full flex items-center justify-center gap-1 backdrop-blur-md">
-                      <div className="w-1 h-1 bg-zinc-600 rounded-full animate-bounce" />
-                      <div className="w-1 h-1 bg-zinc-600 rounded-full animate-bounce delay-100" />
-                      <div className="w-1 h-1 bg-zinc-600 rounded-full animate-bounce delay-200" />
-                    </div>
-                  </div>
-              )}
+            {/* THE WORKBENCH CANVAS */}
+            <div className="flex-1 pt-16">
+               <AgentWorkbench agentId={selectedAgent.id} />
             </div>
-
-            {/* Input Bar */}
-            <div className="p-8 border-t border-zinc-800/50 bg-black/40 backdrop-blur-2xl">
-              <form onSubmit={handleSubmit} className="relative max-w-4xl mx-auto group">
-                <input 
-                  placeholder={`Send instructions to ${selectedAgent.name}...`}
-                  className="w-full h-16 bg-zinc-950 border border-zinc-800 rounded-2xl pl-6 pr-24 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-zinc-700 shadow-2xl"
-                  value={input}
-                  onChange={handleInputChange}
-                />
-                <button 
-                  type="submit"
-                  disabled={!input || isLoading}
-                  className="absolute right-3 top-3 w-10 h-10 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl flex items-center justify-center disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </form>
-              <div className="flex items-center justify-center gap-6 mt-6">
-                 <div className="flex items-center gap-2">
-                    <Shield className="w-3 h-3 text-emerald-500" />
-                    <span className="text-[8px] font-black text-zinc-600 uppercase tracking-[0.2em]">Sanitized Environment</span>
-                 </div>
-                 <div className="flex items-center gap-2">
-                    <Zap className="w-3 h-3 text-indigo-500" />
-                    <span className="text-[8px] font-black text-zinc-600 uppercase tracking-[0.2em]">Low Latency Bridge</span>
-                 </div>
-              </div>
-            </div>
-          </>
+          </div>
         )}
       </main>
 
