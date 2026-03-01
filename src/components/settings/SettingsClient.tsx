@@ -7,7 +7,6 @@ import { InstallsTab } from './InstallsTab'
 import { BillingTab } from './BillingTab'
 import { PublisherTab } from './PublisherTab'
 import { DangerZoneTab } from './DangerZoneTab'
-import { User } from '@supabase/supabase-js'
 import { motion, AnimatePresence } from 'framer-motion'
 import { User as LucideUser, Download, CreditCard, ShieldCheck, AlertTriangle, Menu, X } from 'lucide-react'
 

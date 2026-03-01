@@ -3,64 +3,42 @@
 import { useChat } from '@ai-sdk/react'
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Bot, User, Send, Package, Activity, Info, ChevronRight, CheckCircle2, AlertCircle, Loader2, Sparkles, Globe, Shield, Lock, X } from 'lucide-react'
+import { Bot, User, Send, Package, Activity, Info, X, Check, Globe, Shield, Lock, AlertCircle, Loader2, Zap } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
-export default function AgentConsolePage() {
+export default function AgentDetailConsolePage() {
   const params = useParams()
   const router = useRouter()
   const agentId = params.id as string
+  
   const [agent, setAgent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [activeTab, setActiveTab] = useState<'chat' | 'identity' | 'chronos'>('chat')
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages } = useChat({
     api: `/api/agent/${agentId}/chat`,
     id: agentId,
-    initialMessages: [
-      { id: 'welcome', role: 'assistant', content: `Hello! I'm your configured agent, ${agent?.name || 'Sovereign Assistant'}. How can I assist you today using my attached skills?` }
-    ],
   })
 
   useEffect(() => {
     async function fetchAgent() {
         try {
-            const res = await fetch(`/api/agents`)
+            const res = await fetch(`/api/agents/${agentId}`)
+            if (!res.ok) throw new Error('Agent not found')
             const data = await res.json()
-            let found = data.agents?.find((a: any) => a.id === agentId)
-            
-            if (!found) {
-                // Try hardcoded demo if DB fails or table missing
-                if (agentId === 'demo-agent') {
-                  found = {
-                    id: 'demo-agent',
-                    name: 'Sovereign Assistant',
-                    description: 'A high-performance agent for marketplace management and security audits.',
-                    model_id: 'gemini-2.0-flash',
-                    is_public: true,
-                    agent_skills: [
-                      { skill_id: 'sec-1', skills: { name: 'vuln-scanner', slug: 'vuln-scanner', category: 'security' } },
-                      { skill_id: 'gen-1', skills: { name: 'weather', slug: 'weather', category: 'general' } }
-                    ]
-                  }
-                }
-            }
-            
-            if (found) {
-                setAgent(found)
-            }
+            setAgent(data.agent)
         } catch (err) {
             console.error('Failed to fetch agent info:', err)
         } finally {
             setLoading(false)
         }
     }
-    fetchAgent()
+    if (agentId) fetchAgent()
   }, [agentId])
 
   useEffect(() => {
@@ -80,8 +58,8 @@ export default function AgentConsolePage() {
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#0a0a0a] gap-6">
           <AlertCircle className="w-16 h-16 text-red-500/50" />
           <h2 className="text-2xl font-bold text-white">Agent Not Found</h2>
-          <Button onClick={() => router.push('/dashboard/agents')} variant="outline" className="rounded-full border-zinc-800 text-zinc-300">
-              Back to Dashboard
+          <Button onClick={() => router.push('/agent-console')} variant="outline" className="rounded-full border-zinc-800 text-zinc-300">
+              Back to Console
           </Button>
       </div>
   )
@@ -180,7 +158,7 @@ export default function AgentConsolePage() {
                           <div key={ti.toolCallId} className="p-4 bg-zinc-900 border border-zinc-800 rounded-2xl flex items-center justify-between group">
                             <div className="flex items-center gap-3">
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${ti.state === 'result' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500 animate-pulse'}`}>
-                                  {ti.state === 'result' ? <CheckCircle2 className="w-4 h-4" /> : <Loader2 className="w-4 h-4 animate-spin" />}
+                                  {ti.state === 'result' ? <Check className="w-4 h-4" /> : <Loader2 className="w-4 h-4 animate-spin" />}
                                 </div>
                                 <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
                                   {ti.toolName.replace('__', ': ')}

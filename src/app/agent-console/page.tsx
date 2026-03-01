@@ -1,7 +1,5 @@
 'use client'
 
-/** BUILD VERIFICATION: CLEAN DEPLOYMENT V3 **/
-
 import { useState, useEffect, useRef } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { 
@@ -13,13 +11,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useRouter } from 'next/navigation'
-import { useSupabaseClient } from '@/hooks/use-supabase-client'
 import { useAuth } from '@clerk/nextjs'
 
 // Agent Console - Unified High-Performance Interface
 export default function AgentConsolePage() {
   const { userId } = useAuth()
-  const supabase = useSupabaseClient()
   const router = useRouter()
   
   const [agents, setAgents] = useState<any[]>([])
@@ -36,21 +32,20 @@ export default function AgentConsolePage() {
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Fetch Agents via direct Supabase SDK
+  // Fetch Agents via server-side API routes
   const fetchAgents = async () => {
     if (!userId) return
     try {
-      const { data, error } = await supabase
-        .from('agents')
-        .select('*, agent_skills(*, skills(*))')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
+      const res = await fetch('/api/agents')
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || `HTTP ${res.status}`)
+      }
+      const data = await res.json()
+      setAgents(data.agents || [])
       
-      setAgents(data || [])
-      if (data && data.length > 0 && !selectedAgent) {
-        setSelectedAgent(data[0])
+      if (data.agents && data.agents.length > 0 && !selectedAgent) {
+        setSelectedAgent(data.agents[0])
       }
     } catch (err: any) {
       console.error('Failed to fetch agents:', err.message)
@@ -93,34 +88,34 @@ export default function AgentConsolePage() {
     setCreationLoading(true)
     
     try {
-      const { data, error } = await supabase
-        .from('agents')
-        .insert({
-          user_id: userId,
+      const res = await fetch('/api/agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           name: newName,
           description: newDesc,
           model_id: newModel,
           is_public: false
         })
-        .select()
-        .single()
+      })
       
-      if (error) throw error
+      const data = await res.json()
+      
+      if (!res.ok) throw new Error(data.error || 'Creation failed')
       
       setShowCreateModal(false)
       setNewName('')
       setNewDescription('')
       
-      // Immediate refresh from Supabase
-      const { data: refreshedAgents } = await supabase
-          .from('agents')
-          .select('*, agent_skills(*, skills(*))')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
+      // Refresh list via API
+      await fetchAgents()
       
-      if (refreshedAgents) {
-          setAgents(refreshedAgents)
-          const newAgent = refreshedAgents.find((a: any) => a.id === data.id)
+      // Select the new agent if ID returned
+      if (data.agent_id) {
+          // We could also just find it in the already refreshed list
+          const resRefresh = await fetch('/api/agents')
+          const dataRefresh = await resRefresh.json()
+          const newAgent = dataRefresh.agents?.find((a: any) => a.id === data.agent_id)
           if (newAgent) setSelectedAgent(newAgent)
       }
     } catch (err: any) {

@@ -1,27 +1,49 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { createClient } from '@/utils/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(request: Request) {
-  const { userId } = await auth()
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
+export async function GET() {
   try {
-    const { name, description, model_id, is_public, skill_configs } = await request.json()
-    console.log(`[API] Creating agent: "${name}" for user ${userId}`)
-
-    if (!name || !model_id) {
-        return NextResponse.json({ error: 'Name and Model are required' }, { status: 400 })
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const supabase = await createClient(true)
+    const { data: agents, error } = await supabaseAdmin
+      .from('agents')
+      .select('*, agent_skills(*, skills(*))')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('[API] Error fetching agents:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ agents })
+  } catch (err) {
+    console.error('[API] Unhandled error in GET /api/agents:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { name, description, model_id, is_public, skill_configs } = await request.json()
+
+    if (!name || !model_id) {
+      return NextResponse.json({ error: 'Name and Model are required' }, { status: 400 })
+    }
 
     // 1. Create the agent
-    const { data: agent, error: agentError } = await supabase
+    const { data: agent, error: agentError } = await supabaseAdmin
       .from('agents')
       .insert({
         user_id: userId,
@@ -34,13 +56,11 @@ export async function POST(request: Request) {
       .single()
 
     if (agentError) {
-      console.error('[API] Error creating agent row:', agentError)
+      console.error('[API] Error creating agent:', agentError)
       return NextResponse.json({ error: agentError.message }, { status: 500 })
     }
 
-    console.log(`[API] Agent row created: ${agent.id}`)
-
-    // 2. Attach skills
+    // 2. Attach skills if provided
     if (skill_configs && skill_configs.length > 0) {
       const agentSkills = skill_configs.map((sc: any) => ({
         agent_id: agent.id,
@@ -48,42 +68,18 @@ export async function POST(request: Request) {
         permissions_map: sc.permissions || {}
       }))
 
-      const { error: skillsError } = await supabase
+      const { error: skillsError } = await supabaseAdmin
         .from('agent_skills')
         .insert(agentSkills)
 
       if (skillsError) {
-        console.error('Error attaching skills:', skillsError)
-        // We could delete the agent here, but let's just return a partial success warning
+        console.error('[API] Error attaching skills:', skillsError)
       }
     }
 
     return NextResponse.json({ success: true, agent_id: agent.id })
   } catch (err) {
-    console.error('API Error:', err)
+    console.error('[API] Unhandled error in POST /api/agents:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
-
-export async function GET(request: Request) {
-    const { userId } = await auth()
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    console.log(`[API] Fetching agents for user: ${userId}`)
-    
-    const supabase = await createClient()
-    const { data: agents, error } = await supabase
-      .from('agents')
-      .select('*, agent_skills(*, skills(*))')
-      .eq('user_id', userId)
-
-    if (error) {
-        console.error('[API] Supabase error fetching agents:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    console.log(`[API] Found ${agents?.length || 0} agents for user ${userId}`)
-    return NextResponse.json({ agents })
 }
