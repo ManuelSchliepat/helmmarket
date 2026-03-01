@@ -4,14 +4,12 @@ import { useState, useEffect, useRef } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { 
   Bot, Plus, Send, Activity, Info, X, Check, 
-  ChevronRight, Search, Settings, Trash2, 
-  Globe, Lock, Loader2, Sparkles, User,
-  LayoutDashboard, History, Zap, Shield
+  Settings, Trash2, Globe, Lock, Loader2, Sparkles, User,
+  Shield, Zap
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSupabaseClient } from '@/hooks/use-supabase-client'
 import { useAuth } from '@clerk/nextjs'
@@ -20,133 +18,9 @@ import { useAuth } from '@clerk/nextjs'
 export default function AgentConsolePage() {
   const { userId } = useAuth()
   const supabase = useSupabaseClient()
-=======
-import { useRouter } from 'next/navigation'
-import { useSupabaseClient } from '@/hooks/use-supabase-client'
-
-// Agent Console - Unified High-Performance Interface
-export default function AgentConsolePage() {
-  const supabase = useSupabaseClient()
->>>>>>> REPLACE
-<<<<<<< SEARCH
-  // Fetch Agents
-  const fetchAgents = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('agents')
-        .select('*, agent_skills(*, skills(*))')
-        .order('created_at', { ascending: false })
-=======
-  // Fetch Agents
-  const fetchAgents = async () => {
-    if (!userId) return
-    try {
-      const { data, error } = await supabase
-        .from('agents')
-        .select('*, agent_skills(*, skills(*))')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
->>>>>>> REPLACE
-<<<<<<< SEARCH
-        // Refresh and select new agent via direct Supabase call
-        const { data: refreshedAgents, error } = await supabase
-            .from('agents')
-            .select('*, agent_skills(*, skills(*))')
-            .order('created_at', { ascending: false })
-=======
-        // Refresh and select new agent via direct Supabase call
-        const { data: refreshedAgents, error } = await supabase
-            .from('agents')
-            .select('*, agent_skills(*, skills(*))')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false })
->>>>>>> REPLACE
+  const router = useRouter()
+  
   const [agents, setAgents] = useState<any[]>([])
-=======
-import { useRouter } from 'next/navigation'
-
-// Agent Console - Unified High-Performance Interface
-export default function AgentConsolePage() {
-  const [agents, setAgents] = useState<any[]>([])
->>>>>>> REPLACE
-<<<<<<< SEARCH
-  // Fetch Agents
-  const fetchAgents = async () => {
-    try {
-      const res = await fetch('/api/agents', { cache: 'no-store' })
-      if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.error || `HTTP ${res.status}`)
-      }
-      const data = await res.json()
-      setAgents(data.agents || [])
-      if (data.agents?.length > 0 && !selectedAgent) {
-        setSelectedAgent(data.agents[0])
-      }
-    } catch (err: any) {
-      console.error('Failed to fetch agents:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-=======
-  // Fetch Agents
-  const fetchAgents = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('agents')
-        .select('*, agent_skills(*, skills(*))')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      
-      setAgents(data || [])
-      if (data && data.length > 0 && !selectedAgent) {
-        setSelectedAgent(data[0])
-      }
-    } catch (err: any) {
-      console.error('Failed to fetch agents:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
->>>>>>> REPLACE
-<<<<<<< SEARCH
-      if (res.ok) {
-        setShowCreateModal(false)
-        setNewName('')
-        setNewDescription('')
-        await fetchAgents()
-        
-        // Find and select the new agent
-        if (data.agent_id) {
-            const resNew = await fetch('/api/agents', { cache: 'no-store' })
-            const dataNew = await resNew.json()
-            const newAgent = dataNew.agents?.find((a: any) => a.id === data.agent_id)
-            if (newAgent) setSelectedAgent(newAgent)
-        }
-      } else {
-=======
-      if (res.ok) {
-        setShowCreateModal(false)
-        setNewName('')
-        setNewDescription('')
-        
-        // Refresh and select new agent via direct Supabase call
-        const { data: refreshedAgents, error } = await supabase
-            .from('agents')
-            .select('*, agent_skills(*, skills(*))')
-            .order('created_at', { ascending: false })
-        
-        if (!error && refreshedAgents) {
-            setAgents(refreshedAgents)
-            const newAgent = refreshedAgents.find((a: any) => a.id === data.agent_id)
-            if (newAgent) setSelectedAgent(newAgent)
-        } else {
-            await fetchAgents()
-        }
-      } else {
->>>>>>> REPLACE
   const [selectedAgent, setSelectedAgent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -160,21 +34,24 @@ export default function AgentConsolePage() {
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Fetch Agents
+  // Fetch Agents via direct Supabase SDK
   const fetchAgents = async () => {
+    if (!userId) return
     try {
-      const res = await fetch('/api/agents', { cache: 'no-store' })
-      if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.error || `HTTP ${res.status}`)
-      }
-      const data = await res.json()
-      setAgents(data.agents || [])
-      if (data.agents?.length > 0 && !selectedAgent) {
-        setSelectedAgent(data.agents[0])
+      const { data, error } = await supabase
+        .from('agents')
+        .select('*, agent_skills(*, skills(*))')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      
+      setAgents(data || [])
+      if (data && data.length > 0 && !selectedAgent) {
+        setSelectedAgent(data[0])
       }
     } catch (err: any) {
-      console.error('Failed to fetch agents:', err)
+      console.error('Failed to fetch agents:', err.message)
     } finally {
       setLoading(false)
     }
@@ -190,9 +67,6 @@ export default function AgentConsolePage() {
   const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages } = useChat({
     api: selectedAgent ? `/api/agent/${selectedAgent.id}/chat` : undefined,
     id: selectedAgent?.id,
-    onFinish: () => {
-        // Handle post-chat actions
-    }
   })
 
   // Auto-scroll
@@ -405,7 +279,7 @@ export default function AgentConsolePage() {
                         <div key={ti.toolCallId} className="p-4 bg-black/40 border border-zinc-800 rounded-2xl flex items-center justify-between group">
                           <div className="flex items-center gap-3">
                               <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${ti.state === 'result' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500 animate-pulse'}`}>
-                                {ti.state === 'result' ? <CheckCircle2 className="w-4 h-4" /> : <Loader2 className="w-4 h-4 animate-spin" />}
+                                {ti.state === 'result' ? <Check className="w-4 h-4" /> : <Loader2 className="w-4 h-4 animate-spin" />}
                               </div>
                               <div className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">
                                 EXEC: {ti.toolName.replace('__', ': ')}
@@ -542,8 +416,4 @@ export default function AgentConsolePage() {
       </AnimatePresence>
     </div>
   )
-}
-
-function CheckCircle2(props: any) {
-    return <Check {...props} />
 }
