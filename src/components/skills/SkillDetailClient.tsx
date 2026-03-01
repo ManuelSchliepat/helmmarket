@@ -385,7 +385,19 @@ export function SkillDetailClient({ skill }: { skill: Skill }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800 text-zinc-300">
-                  {[
+                  {(skill.config as any)?.operations?.map((op: any) => (
+                    <tr key={op.name} className="hover:bg-zinc-900/50 transition-colors">
+                      <td className="p-8 font-mono text-indigo-400 font-bold group-hover:translate-x-1 transition-transform">{op.name}</td>
+                      <td className="p-8">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase border tracking-widest ${
+                          'allow' === 'allow' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        }`}>
+                          allow
+                        </span>
+                      </td>
+                      <td className="p-8 text-zinc-500 font-medium leading-relaxed">{op.description}</td>
+                    </tr>
+                  )) || [
                     { name: 'execute', perm: 'allow', desc: 'Main logic execution. Fully isolated within the Helm kernel.' },
                     { name: 'notify', perm: 'ask', desc: 'System notifications and alerts. Requires explicit user approval.' }
                   ].map((op) => (

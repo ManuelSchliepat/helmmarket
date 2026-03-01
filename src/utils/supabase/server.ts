@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
+import { auth } from '@clerk/nextjs/server'
 
 export async function createClient(isAdmin = false) {
   if (isAdmin) {
@@ -11,11 +12,18 @@ export async function createClient(isAdmin = false) {
   }
 
   const cookieStore = await cookies()
+  const { getToken } = await auth()
+  
+  // Get the token from our Clerk 'supabase' template
+  const token = await getToken({ template: 'supabase' })
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      global: {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      },
       cookies: {
         getAll() {
           return cookieStore.getAll()
@@ -26,9 +34,7 @@ export async function createClient(isAdmin = false) {
               cookieStore.set(name, value, options)
             )
           } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
+            // Can be ignored in Server Components
           }
         },
       },

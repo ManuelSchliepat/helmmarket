@@ -47,6 +47,9 @@ export function Header() {
             <Link href="/settings" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors mr-2">
               {t('settings')}
             </Link>
+            <Link href="/agent-console" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors mr-2">
+              Agent Console
+            </Link>
             <Link href="/dashboard" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors mr-2">
               {t('console')}
             </Link>

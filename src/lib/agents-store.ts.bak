@@ -1,0 +1,49 @@
+// Hardcoded fallback store for agents if Supabase is unavailable or table is missing
+import { Skill } from './placeholder-data'
+
+export interface Agent {
+  id: string
+  user_id: string
+  name: string
+  description: string
+  model_id: string
+  is_public: boolean
+  created_at: string
+  agent_skills?: {
+    skill_id: string
+    skills: Partial<Skill>
+    permissions_map: Record<string, string>
+  }[]
+}
+
+const MEMORY_AGENTS: Record<string, Agent> = {
+  'demo-agent': {
+    id: 'demo-agent',
+    user_id: 'user_3AIVQi8ooSoBVmHK6jT14jaxkA8',
+    name: 'Sovereign Assistant',
+    description: 'A high-performance agent for marketplace management and security audits.',
+    model_id: 'gemini-2.0-flash',
+    is_public: true,
+    created_at: new Date().toISOString(),
+    agent_skills: [
+      {
+        skill_id: 'sec-1',
+        skills: { name: 'vuln-scanner', slug: 'vuln-scanner', category: 'security' },
+        permissions_map: { 'getPrice': 'allow' }
+      },
+      {
+        skill_id: 'gen-1',
+        skills: { name: 'weather', slug: 'weather', category: 'general' },
+        permissions_map: { 'getWeather': 'ask' }
+      }
+    ]
+  }
+}
+
+export async function getAgent(id: string): Promise<Agent | null> {
+    return MEMORY_AGENTS[id] || null
+}
+
+export async function listAgents(userId: string): Promise<Agent[]> {
+    return Object.values(MEMORY_AGENTS).filter(a => a.user_id === userId || a.is_public)
+}

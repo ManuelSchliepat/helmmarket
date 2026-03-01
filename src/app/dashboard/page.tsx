@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, Package, BarChart3, CreditCard, Settings, CheckCircle2, Circle, ArrowRight, Star, MessageSquare } from 'lucide-react'
+import { LayoutDashboard, Package, BarChart3, CreditCard, Settings, CheckCircle2, Circle, ArrowRight, Star, Bot } from 'lucide-react'
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
@@ -11,11 +11,10 @@ export const dynamic = 'force-dynamic'
 export default async function DashboardPage({ 
   searchParams 
 }: { 
-  searchParams: Promise<{ submitted?: string, stripe?: string }> 
+  searchParams: Promise<{ submitted?: string }> 
 }) {
   const params = await searchParams
   const submitted = params.submitted === 'true'
-  const stripeConnected = params.stripe === 'connected'
 
   const { userId } = await auth()
   if (!userId) redirect('/sign-in')
@@ -79,7 +78,7 @@ export default async function DashboardPage({
     }
   }
 
-  const revenueStr = `€${((totalRevenueCents * 0.7) / 100).toFixed(2)}` // Showing developer's 70% share
+  const revenueStr = `€${(totalRevenueCents / 100).toFixed(2)}`
 
   return (
     <div className="container mx-auto py-32 px-6 flex flex-col lg:flex-row gap-16 relative">
@@ -91,26 +90,17 @@ export default async function DashboardPage({
           </p>
         </div>
       )}
-
-      {stripeConnected && (
-        <div className="absolute top-12 left-6 right-6 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center gap-3 text-indigo-400 z-10 animate-in fade-in slide-in-from-top-4 duration-500">
-          <CreditCard className="w-5 h-5" />
-          <p className="text-sm font-bold uppercase tracking-widest">
-            Stripe Connected — Payouts are now enabled for your account.
-          </p>
-        </div>
-      )}
       
       {/* Sidebar */}
       <aside className="w-full lg:w-64 shrink-0">
         <nav className="space-y-2 lg:sticky lg:top-32">
           {[
-            { label: 'Account', icon: LayoutDashboard, active: true, href: '/dashboard' },
-            { label: 'My Skills', icon: Package, href: '/dashboard' },
-            { label: 'Analytics', icon: BarChart3, href: '/dashboard' },
-            { label: 'Billing', icon: CreditCard, href: '/dashboard' },
-            { label: 'Settings', icon: Settings, href: '/dashboard' },
-            { label: 'Support', icon: MessageSquare, href: '/dashboard/support' }
+            { label: 'Overview', icon: LayoutDashboard, active: true, href: '/dashboard' },
+            { label: 'Agent Console', icon: Bot, href: '/agent-console' },
+            { label: 'My Skills', icon: Package, href: '#' },
+            { label: 'Analytics', icon: BarChart3, href: '#' },
+            { label: 'Billing', icon: CreditCard, href: '#' },
+            { label: 'Settings', icon: Settings, href: '#' }
           ].map((item) => (
             <Link 
               key={item.label} 
@@ -141,7 +131,7 @@ export default async function DashboardPage({
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
-            { label: 'Your Earnings (70%)', val: revenueStr },
+            { label: 'Revenue', val: revenueStr },
             { label: 'Active Installs', val: activeInstalls.toString() },
             { label: 'Avg Rating', val: 'N/A' },
             { label: 'Skills Live', val: skillsLive.toString() }
@@ -209,7 +199,7 @@ export default async function DashboardPage({
                               <span>•</span>
                               <span>{stats.views} Views</span>
                               <span>{stats.installs} Installs</span>
-                              <span>€{((stats.revenue * 0.7) / 100).toFixed(2)}</span>
+                              <span>€{(stats.revenue / 100).toFixed(2)}</span>
                             </div>
                           </div>
                         </div>
@@ -225,20 +215,16 @@ export default async function DashboardPage({
           {/* Sidebar Info */}
           <aside className="p-8 bg-zinc-900 border border-zinc-800 rounded-3xl space-y-8 h-fit lg:sticky lg:top-32">
             <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Payouts</h3>
-            
-            {developer?.stripe_account_id ? (
-              <div className="flex items-center justify-between p-4 bg-black/20 rounded-xl border border-zinc-800">
-                <div className="text-xs font-medium text-white">Payout enabled ✓</div>
+            <div className="flex items-center justify-between p-4 bg-black/20 rounded-xl border border-zinc-800">
+              <div className="text-xs font-medium text-white">Stripe Connect</div>
+              {developer?.stripe_account_id ? (
                 <div className="text-[10px] font-bold text-emerald-500 uppercase px-2 py-0.5 bg-emerald-500/10 rounded-md">Connected</div>
-              </div>
-            ) : (
-              <Button asChild variant="outline" className="w-full bg-indigo-600 border-indigo-500 text-white hover:bg-indigo-500 rounded-xl font-bold h-12 shadow-lg shadow-indigo-600/20">
-                <Link href="/api/connect/onboard">Connect Stripe</Link>
-              </Button>
-            )}
-
+              ) : (
+                <div className="text-[10px] font-bold text-amber-500 uppercase px-2 py-0.5 bg-amber-500/10 rounded-md">Pending</div>
+              )}
+            </div>
             <p className="text-xs text-zinc-500 leading-relaxed font-medium">
-              Payouts are processed automatically via Stripe Connect. Developer share: 70% of gross revenue.
+              Payouts are processed automatically at the end of each month. Minimum threshold: €50.
             </p>
             <div className="pt-4 border-t border-zinc-800">
               <div className="flex justify-between text-sm mb-2">
@@ -249,12 +235,6 @@ export default async function DashboardPage({
                 <span className="text-zinc-500">Available</span>
                 <span className="text-white font-medium">€0.00</span>
               </div>
-            </div>
-            
-            <div className="pt-8 border-t border-zinc-800">
-              <Button asChild variant="outline" className="w-full bg-transparent border-zinc-800 text-zinc-400 hover:text-white rounded-xl font-bold">
-                <Link href="/dashboard/support">Contact Support</Link>
-              </Button>
             </div>
           </aside>
 

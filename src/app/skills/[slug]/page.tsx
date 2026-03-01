@@ -163,6 +163,58 @@ export default async function SkillDetailPage({ params }: { params: Promise<{ sl
           </div>
 
           <SkillDetailClient skill={skill} />
+
+          {/* MCP Integration Card */}
+          {skill.config && (
+            <Card className="bg-zinc-900 border-zinc-800 rounded-3xl p-10 mt-16 overflow-hidden relative group">
+              <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Zap className="w-32 h-32 text-indigo-500" />
+              </div>
+              
+              <div className="relative z-10">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-500">
+                    <Zap className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white tracking-tight">MCP Integration</h3>
+                </div>
+
+                <p className="text-zinc-400 text-sm leading-relaxed mb-8 max-w-lg">
+                  This skill is fully compatible with the Model Context Protocol (MCP). You can use it directly in Claude Desktop, Cursor, or any other MCP-compatible environment.
+                </p>
+
+                <div className="grid md:grid-cols-2 gap-6 mb-10">
+                  <div className="p-6 bg-black/40 border border-zinc-800 rounded-2xl">
+                    <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4">Server URL</div>
+                    <div className="flex items-center justify-between gap-4 p-3 bg-zinc-900 border border-zinc-800 rounded-xl">
+                      <code className="text-[10px] text-indigo-400 truncate">
+                        https://helmmarket.com/api/mcp/{skill.slug}/manifest
+                      </code>
+                    </div>
+                  </div>
+                  <div className="p-6 bg-black/40 border border-zinc-800 rounded-2xl">
+                    <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4">Compatibility</div>
+                    <div className="flex flex-wrap gap-2">
+                      {['Claude', 'Cursor', 'Windsurf', 'Helm SDK'].map(plat => (
+                        <span key={plat} className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[9px] font-bold text-zinc-400 uppercase">
+                          {plat}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Button className="h-12 px-8 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold uppercase tracking-widest text-xs shadow-lg shadow-indigo-600/20">
+                    Copy MCP Link
+                  </Button>
+                  <Button variant="outline" className="h-12 px-8 border-zinc-800 text-zinc-400 hover:border-zinc-600 rounded-full font-bold uppercase tracking-widest text-xs" asChild>
+                    <Link href="/docs/mcp-integration">View Integration Guide</Link>
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
         </div>
 
         <aside className="space-y-8 lg:sticky lg:top-32">

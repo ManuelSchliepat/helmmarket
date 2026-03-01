@@ -52,7 +52,7 @@ export async function POST(req: Request) {
   if (eventType === 'user.created' || eventType === 'user.updated') {
     const { email_addresses, first_name, last_name, image_url } = evt.data
     const email = email_addresses[0].email_address
-    const supabase = await createClient()
+    const supabase = await createClient(true) // Use service role for sync
 
     const { error } = await supabase
       .from('users')

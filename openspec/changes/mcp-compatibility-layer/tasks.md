@@ -24,6 +24,6 @@
 
 ## 5. Verification
 
-- [ ] 5.1 Test MCP manifest generation for a variety of sample skills.
-- [ ] 5.2 Verify end-to-end execution of a tool via the MCP bridge endpoint.
-- [ ] 5.3 Ensure the publishing flow correctly captures and stores the `helm.config.json`.
+- [x] 5.1 Test MCP manifest generation for a variety of sample skills.
+- [x] 5.2 Verify end-to-end execution of a tool via the MCP bridge endpoint.
+- [x] 5.3 Ensure the publishing flow correctly captures and stores the `helm.config.json`.
