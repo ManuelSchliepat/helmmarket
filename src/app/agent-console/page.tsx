@@ -1,11 +1,11 @@
 'use client'
 
-/** BUILD VERIFICATION: CLEAN DEPLOYMENT V4 (Workbench Integration) **/
+/** BUILD VERIFICATION: CLEAN DEPLOYMENT V5 (Final Emergency Fix) **/
 
 import { useState, useEffect } from 'react'
 import { 
   Bot, Plus, Activity, X, Check, 
-  Settings, Globe, Lock, Loader2, User
+  Settings, Globe, Lock, Loader2
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -108,7 +108,7 @@ export default function AgentConsolePage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-[#0a0a1a] overflow-hidden">
+    <div className="flex h-[calc(100vh-64px)] bg-[#0a0a1a] overflow-hidden text-zinc-400">
       
       {/* 1. AGENT SELECTOR SIDEBAR */}
       <aside className={`w-80 border-r border-zinc-800/50 bg-[#0c0c0c] flex flex-col transition-all duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:w-0 lg:opacity-0'}`}>
@@ -174,7 +174,7 @@ export default function AgentConsolePage() {
       </aside>
 
       {/* 2. MAIN WORKBENCH */}
-      <main className="flex-1 flex flex-col relative">
+      <main className="flex-1 flex flex-col relative bg-[#0a0a1a]">
         {!selectedAgent ? (
           <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-black/20">
              <div className="w-24 h-24 bg-zinc-900 border border-zinc-800 rounded-[2.5rem] flex items-center justify-center mb-8 text-zinc-700">
