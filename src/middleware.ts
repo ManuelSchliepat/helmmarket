@@ -10,7 +10,8 @@ const isPublicRoute = createRouteMatcher([
   '/docs/(.*)',
   '/blog/(.*)', // Step 2: Make blog public
   '/api/mcp/(.*)', // Step 3: Make MCP routes public for agent execution
-  '/api/agent/(.*)/chat' // Step 4: Allow automated foundation proof
+  '/api/agent/(.*)/chat', // Step 4: Allow automated foundation proof
+  '/agent-console' // TEMPORARY TEST: Verify if route works without Clerk protection
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
