@@ -12,6 +12,7 @@ export async function POST(request: Request) {
 
   try {
     const { name, description, model_id, is_public, skill_configs } = await request.json()
+    console.log(`[API] Creating agent: "${name}" for user ${userId}`)
 
     if (!name || !model_id) {
         return NextResponse.json({ error: 'Name and Model are required' }, { status: 400 })
@@ -33,9 +34,11 @@ export async function POST(request: Request) {
       .single()
 
     if (agentError) {
-      console.error('Error creating agent:', agentError)
+      console.error('[API] Error creating agent row:', agentError)
       return NextResponse.json({ error: agentError.message }, { status: 500 })
     }
+
+    console.log(`[API] Agent row created: ${agent.id}`)
 
     // 2. Attach skills
     if (skill_configs && skill_configs.length > 0) {
@@ -68,6 +71,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
+    console.log(`[API] Fetching agents for user: ${userId}`)
+    
     const supabase = await createClient()
     const { data: agents, error } = await supabase
       .from('agents')
@@ -75,8 +80,10 @@ export async function GET(request: Request) {
       .eq('user_id', userId)
 
     if (error) {
+        console.error('[API] Supabase error fetching agents:', error)
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    console.log(`[API] Found ${agents?.length || 0} agents for user ${userId}`)
     return NextResponse.json({ agents })
 }

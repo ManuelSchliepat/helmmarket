@@ -34,12 +34,16 @@ export default function AgentConsolePage() {
   const fetchAgents = async () => {
     try {
       const res = await fetch('/api/agents')
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || `HTTP ${res.status}`)
+      }
       const data = await res.json()
       setAgents(data.agents || [])
       if (data.agents?.length > 0 && !selectedAgent) {
         setSelectedAgent(data.agents[0])
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch agents:', err)
     } finally {
       setLoading(false)
@@ -90,14 +94,21 @@ export default function AgentConsolePage() {
           skill_configs: [] // Empty initial skills
         })
       })
+      
+      const data = await res.json()
+      
       if (res.ok) {
         setShowCreateModal(false)
         setNewName('')
         setNewDescription('')
         await fetchAgents()
+      } else {
+        console.error('Agent creation failed:', data.error)
+        alert(`Deployment Failed: ${data.error || 'Unknown error'}`)
       }
-    } catch (err) {
-      console.error('Creation failed:', err)
+    } catch (err: any) {
+      console.error('Creation request failed:', err)
+      alert(`Network Error: ${err.message}`)
     } finally {
       setCreationLoading(false)
     }
